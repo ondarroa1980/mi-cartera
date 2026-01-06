@@ -2,112 +2,107 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.express as px
-from datetime import datetime
 
 st.set_page_config(page_title="Mi Cartera MyInvestor", layout="wide")
 
-# --- DATOS REALES DE TU CSV ---
-def obtener_datos_limpios():
+# --- 1. DATOS DE PARTIDA (Sacados de tu extracto) ---
+def inicializar_datos():
     return [
-        {"Ticker": "AMP.MC", "Nombre": "Amper", "Cantidad": 10400.0, "Coste_Total_EUR": 2023.79, "Tipo": "Acción"},
-        {"Ticker": "NXT.MC", "Nombre": "Nueva Expresión Textil", "Cantidad": 2870.0, "Coste_Total_EUR": 2061.80, "Tipo": "Acción"},
-        {"Ticker": "UNH", "Nombre": "UnitedHealth Group", "Cantidad": 7.0, "Coste_Total_EUR": 1867.84, "Tipo": "Acción"},
-        {"Ticker": "JD", "Nombre": "JD.com", "Cantidad": 58.0, "Coste_Total_EUR": 1710.79, "Tipo": "Acción"},
-        # Tickers ajustados para mayor compatibilidad
-        {"Ticker": "IWDA.AS", "Nombre": "iShares MSCI World", "Cantidad": 17.0, "Coste_Total_EUR": 6516.20, "Tipo": "Fondo"},
-        {"Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cantidad": 6.6, "Coste_Total_EUR": 999.98, "Tipo": "Fondo"}
+        {"Tipo": "Acción", "Ticker": "AMP.MC", "Nombre": "Amper", "Cantidad": 10400.0, "Inversion": 2023.79, "Precio_Act": 0.0},
+        {"Tipo": "Acción", "Ticker": "NXT.MC", "Nombre": "Nueva Expresión Textil", "Cantidad": 2870.0, "Inversion": 2061.80, "Precio_Act": 0.0},
+        {"Tipo": "Acción", "Ticker": "UNH", "Nombre": "UnitedHealth Group", "Cantidad": 7.0, "Inversion": 1867.84, "Precio_Act": 0.0},
+        {"Tipo": "Acción", "Ticker": "JD", "Nombre": "JD.com", "Cantidad": 58.0, "Inversion": 1710.79, "Precio_Act": 0.0},
+        {"Tipo": "Fondo", "Ticker": "F-MSCI", "Nombre": "MSCI World Index", "Cantidad": 17.0, "Inversion": 6516.20, "Precio_Act": 383.30},
+        {"Tipo": "Fondo", "Ticker": "F-CHINA", "Nombre": "Pictet China Index", "Cantidad": 6.6, "Inversion": 999.98, "Precio_Act": 151.51}
     ]
 
-# Gestión de archivo local
-try:
-    df_hist = pd.read_csv("mi_cartera_v4.csv")
-except:
-    df_hist = pd.DataFrame(obtener_datos_limpios())
-    df_hist.to_csv("mi_cartera_v4.csv", index=False)
-
-# --- OBTENER TIPO DE CAMBIO ---
-@st.cache_data(ttl=3600)
-def get_rate():
+# Cargar o crear el archivo de datos
+if 'df_cartera' not in st.session_state:
     try:
-        data = yf.download("EURUSD=X", period="1d", progress=False)
-        return data['Close'].iloc[-1]
-    except: return 1.09
+        st.session_state.df_cartera = pd.read_csv("cartera_definitiva.csv")
+    except:
+        st.session_state.df_cartera = pd.DataFrame(inicializar_datos())
 
-# --- PROCESAMIENTO ---
-rate = get_rate()
-with st.spinner('Consultando mercados en tiempo real...'):
-    res = []
-    for _, row in df_hist.iterrows():
-        p_eur = 0
-        status = "✅"
-        try:
-            # Descarga de precio
-            tk = yf.download(row['Ticker'], period="1d", interval="1m", progress=False)
-            if not tk.empty:
-                p_raw = tk['Close'].iloc[-1]
-                # Si es una acción de EEUU (UNH o JD), convertimos a EUR
-                if row['Ticker'] in ['UNH', 'JD']:
-                    p_eur = p_raw / rate
-                else:
-                    p_eur = p_raw
-            else:
-                raise ValueError("Vacío")
-        except:
-            # Si falla, usamos el precio de compra y marcamos aviso
-            p_eur = row['Coste_Total_EUR'] / row['Cantidad']
-            status = "⚠️ (No carga)"
+# --- 2. OBTENER PRECIOS AUTOMÁTICOS (SOLO ACCIONES) ---
+@st.cache_data(ttl=3600)
+def actualizar_precios_auto(df):
+    rate = 1.0  # Por defecto
+    try:
+        rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+    except: rate = 1.09
 
-        v_actual = p_eur * row['Cantidad']
-        ganancia = v_actual - row['Coste_Total_EUR']
-        
-        res.append({
-            "Estado": status,
-            "Tipo": row['Tipo'],
-            "Nombre": row['Nombre'],
-            "Inversión": row['Coste_Total_EUR'],
-            "Valor Act.": v_actual,
-            "Ganancia": ganancia,
-            "Rent. %": (ganancia / row['Coste_Total_EUR'] * 100) if row['Coste_Total_EUR'] > 0 else 0
-        })
-    df_calc = pd.DataFrame(res)
+    for i, row in df.iterrows():
+        if row['Tipo'] == "Acción":
+            try:
+                tk = yf.Ticker(row['Ticker'])
+                hist = tk.history(period="1d")
+                if not hist.empty:
+                    precio = hist["Close"].iloc[-1]
+                    # Si es USD, pasamos a EUR
+                    if row['Ticker'] in ['UNH', 'JD']:
+                        df.at[i, 'Precio_Act'] = precio / rate
+                    else:
+                        df.at[i, 'Precio_Act'] = precio
+            except:
+                pass # Si falla, mantiene el que tiene
+    return df
 
-# --- DISEÑO ---
-st.title("🏦 Mi Cartera: Acciones y Fondos")
+# Botón para forzar actualización de mercado
+if st.button("🔄 Actualizar Precios Acciones"):
+    st.session_state.df_cartera = actualizar_precios_auto(st.session_state.df_cartera)
+    st.session_state.df_cartera.to_csv("cartera_definitiva.csv", index=False)
 
-# Métricas en la parte superior
-t_inv = df_calc['Inversión'].sum()
-t_val = df_calc['Valor Act.'].sum()
-t_gan = t_val - t_inv
-c1, c2, c3 = st.columns(3)
-c1.metric("Inversión Total", f"{t_inv:,.2f} €")
-c2.metric("Valor Actual", f"{t_val:,.2f} €")
-c3.metric("Ganancia Neta", f"{t_gan:,.2f} €", delta=f"{(t_gan/t_inv*100):.2f}%")
+# --- 3. INTERFAZ ---
+st.title("🏦 Mi Cartera Pro")
 
-st.divider()
+# --- SECCIÓN ACCIONES ---
+st.header("📈 Acciones (Automático)")
+df_acc = st.session_state.df_cartera[st.session_state.df_cartera['Tipo'] == "Acción"].copy()
+df_acc['Valor_Mercado'] = df_acc['Precio_Act'] * df_acc['Cantidad']
+df_acc['Ganancia'] = df_acc['Valor_Mercado'] - df_acc['Inversion']
+df_acc['Rent_%'] = (df_acc['Ganancia'] / df_acc['Inversion']) * 100
 
-# --- 1. ACCIONES ---
-st.header("📈 Acciones")
-df_acc = df_calc[df_calc['Tipo'] == 'Acción']
 st.dataframe(df_acc.style.format({
-    "Inversión": "{:.2f} €", "Valor Act.": "{:.2f} €", "Ganancia": "{:.2f} €", "Rent. %": "{:.2f}%"
-}).applymap(lambda x: 'color: red' if isinstance(x, (int, float)) and x < 0 else ('color: green' if isinstance(x, (int, float)) and x > 0 else ''), subset=['Ganancia', 'Rent. %']), 
-use_container_width=True)
+    "Inversion": "{:.2f} €", "Precio_Act": "{:.3f} €", "Valor_Mercado": "{:.2f} €", "Ganancia": "{:.2f} €", "Rent_%": "{:.2f}%"
+}), use_container_width=True)
 
-# --- 2. FONDOS ---
+# --- SECCIÓN FONDOS ---
 st.header("🧱 Fondos de Inversión")
-df_fon = df_calc[df_calc['Tipo'] == 'Fondo']
-st.dataframe(df_fon.style.format({
-    "Inversión": "{:.2f} €", "Valor Act.": "{:.2f} €", "Ganancia": "{:.2f} €", "Rent. %": "{:.2f}%"
-}).applymap(lambda x: 'color: red' if isinstance(x, (int, float)) and x < 0 else ('color: green' if isinstance(x, (int, float)) and x > 0 else ''), subset=['Ganancia', 'Rent. %']), 
-use_container_width=True)
+st.write("💡 *Como los fondos no cargan bien, edita el 'Precio_Act' manualmente con el valor de la App de MyInvestor:*")
 
-# --- GESTIÓN ---
-with st.expander("⚙️ Configuración y añadir activos"):
-    st.write("Añade activos manualmente o resetea la lista.")
-    # Formulario para añadir... (omitido por brevedad, igual que el anterior)
-    if st.button("🗑️ Resetear a datos originales"):
-        pd.DataFrame(obtener_datos_limpios()).to_csv("mi_cartera_v4.csv", index=False)
-        st.rerun()
+# Tabla editable para fondos
+df_fon = st.session_state.df_cartera[st.session_state.df_cartera['Tipo'] == "Fondo"].copy()
+edited_df_fon = st.data_editor(df_fon, column_order=("Nombre", "Cantidad", "Inversion", "Precio_Act"), use_container_width=True)
 
+# Actualizar datos si el usuario edita el precio del fondo
+if not edited_df_fon.equals(df_fon):
+    st.session_state.df_cartera.update(edited_df_fon)
+    st.session_state.df_cartera.to_csv("cartera_definitiva.csv", index=False)
+    st.rerun()
+
+# Cálculos fondos
+df_fon_calc = edited_df_fon.copy()
+df_fon_calc['Valor_Mercado'] = df_fon_calc['Precio_Act'] * df_fon_calc['Cantidad']
+df_fon_calc['Ganancia'] = df_fon_calc['Valor_Mercado'] - df_fon_calc['Inversion']
+df_fon_calc['Rent_%'] = (df_fon_calc['Ganancia'] / df_fon_calc['Inversion']) * 100
+
+st.write("**Resumen Fondos:**")
+st.dataframe(df_fon_calc[['Nombre', 'Inversion', 'Valor_Mercado', 'Ganancia', 'Rent_%']].style.format({
+    "Inversion": "{:.2f} €", "Valor_Mercado": "{:.2f} €", "Ganancia": "{:.2f} €", "Rent_%": "{:.2f}%"
+}), use_container_width=True)
+
+# --- 4. MÉTRICAS TOTALES ---
 st.divider()
-st.plotly_chart(px.pie(df_calc, values='Valor Act.', names='Nombre', title="Distribución por Valor", hole=0.5), use_container_width=True)
+total_inv = df_acc['Inversion'].sum() + df_fon_calc['Inversion'].sum()
+total_val = df_acc['Valor_Mercado'].sum() + df_fon_calc['Valor_Mercado'].sum()
+total_gan = total_val - total_inv
+
+c1, c2, c3 = st.columns(3)
+c1.metric("Inversión Total", f"{total_inv:,.2f} €")
+c2.metric("Valor Actual Cartera", f"{total_val:,.2f} €")
+c3.metric("Beneficio Neto", f"{total_gan:,.2f} €", delta=f"{(total_gan/total_inv*100):.2f}%")
+
+# Gráfico
+st.plotly_chart(px.pie(names=st.session_state.df_cartera['Nombre'], 
+                       values=st.session_state.df_cartera['Precio_Act'] * st.session_state.df_cartera['Cantidad'], 
+                       hole=0.4, title="Distribución de mi Dinero"), use_container_width=True)
