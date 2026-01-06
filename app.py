@@ -3,91 +3,99 @@ import pandas as pd
 import yfinance as yf
 import plotly.express as px
 
-st.set_page_config(page_title="Mi Cartera Total", layout="wide")
+st.set_page_config(page_title="Mi Cartera MyInvestor", layout="wide")
 
-st.title("🏦 Mi Gestor de Inversiones (MyInvestor & More)")
+st.title("📈 Mi Panel de Inversiones Personal")
 
-# Función para cargar datos
+# 1. Función para cargar y procesar datos
 def cargar_datos():
     try:
-        return pd.read_csv("cartera.csv")
+        df = pd.read_csv("cartera.csv")
+        if df.empty:
+            return pd.DataFrame(columns=["Ticker", "Cantidad", "Precio_Compra"])
+        # Agrupamos por Ticker para manejar compras múltiples automáticamente
+        df_resumen = df.groupby("Ticker").apply(
+            lambda x: pd.Series({
+                "Cantidad": x["Cantidad"].sum(),
+                "Coste_Total": (x["Cantidad"] * x["Precio_Compra"]).sum()
+            })
+        ).reset_index()
+        df_resumen["Precio_Medio"] = df_resumen["Coste_Total"] / df_resumen["Cantidad"]
+        return df_resumen
     except FileNotFoundError:
-        return pd.DataFrame(columns=["Ticker", "Tipo", "Cantidad", "Precio_Compra"])
+        return pd.DataFrame(columns=["Ticker", "Cantidad", "Precio_Compra"])
 
-df = cargar_datos()
-
-# --- BARRA LATERAL ---
+# 2. Formulario lateral
 with st.sidebar:
-    st.header("➕ Añadir Activo")
-    tipo = st.selectbox("Categoría", ["Acción", "Fondo Indexado", "Monetario", "ETF"])
-    ticker = st.text_input("Símbolo (ej: NXT.MC, VOO, IWDA.AS)").upper()
-    cantidad = st.number_input("Cantidad total", min_value=0.0, step=0.1)
-    precio_medio = st.number_input("Precio medio de compra (€)", min_value=0.0)
+    st.header("➕ Nueva Operación")
+    # Para Nueva Expresión Textil usar Ticker: NXT.MC
+    ticker = st.text_input("Ticker (ej: NXT.MC, SAN.MC, AAPL)").upper()
+    cant = st.number_input("Cantidad de títulos", min_value=0.0, step=1.0)
+    precio = st.number_input("Precio de esta compra (€)", min_value=0.0)
     
-    if st.button("Guardar en Cartera"):
-        nueva_fila = pd.DataFrame([[ticker, tipo, cantidad, precio_medio]], 
-                                 columns=["Ticker", "Tipo", "Cantidad", "Precio_Compra"])
-        df = pd.concat([df, nueva_fila], ignore_index=True)
-        df.to_csv("cartera.csv", index=False)
-        st.success(f"¡{ticker} actualizado!")
+    if st.button("Añadir a mi Cartera"):
+        nueva_compra = pd.DataFrame([[ticker, cant, precio]], columns=["Ticker", "Cantidad", "Precio_Compra"])
+        try:
+            historico = pd.read_csv("cartera.csv")
+            df_final = pd.concat([historico, nueva_compra], ignore_index=True)
+        except FileNotFoundError:
+            df_final = nueva_compra
+        df_final.to_csv("cartera.csv", index=False)
+        st.success(f"Añadida compra de {ticker}")
         st.rerun()
 
-# --- CÁLCULOS ---
-if not df.empty:
-    # Agrupamos por Ticker por si has metido el mismo varias veces
-    df_agrupado = df.groupby(['Ticker', 'Tipo']).agg({
-        'Cantidad': 'sum',
-        'Precio_Compra': 'mean' # Media de los precios introducidos
-    }).reset_index()
+# 3. Mostrar resultados
+df_cartera = cargar_datos()
 
-    with st.spinner('Actualizando precios de mercado...'):
-        precios_actuales = []
-        for t in df_agrupado['Ticker']:
+if not df_cartera.empty:
+    with st.spinner('Consultando precios actuales...'):
+        precios_vivos = []
+        for t in df_cartera["Ticker"]:
             try:
-                # Usamos yfinance para el precio actual
-                precio = yf.Ticker(t).history(period="1d")['Close'].iloc[-1]
-                precios_actuales.append(precio)
+                # Obtenemos el precio más reciente
+                val = yf.Ticker(t).history(period="1d")["Close"].iloc[-1]
+                precios_vivos.append(round(val, 4))
             except:
-                precios_actuales.append(0)
+                precios_vivos.append(0)
         
-        df_agrupado['Precio Actual'] = precios_actuales
-        df_agrupado['Valor Total'] = df_agrupado['Precio Actual'] * df_agrupado['Cantidad']
-        df_agrupado['Ganancia Absoluta'] = (df_agrupado['Precio Actual'] - df_agrupado['Precio_Compra']) * df_agrupado['Cantidad']
-        df_agrupado['Rentabilidad %'] = ((df_agrupado['Precio Actual'] / df_agrupado['Precio_Compra']) - 1) * 100
+        df_cartera["Precio Mercado"] = precios_vivos
+        df_cartera["Valor Actual"] = df_cartera["Precio Mercado"] * df_cartera["Cantidad"]
+        df_cartera["Ganancia (€)"] = df_cartera["Valor Actual"] - df_cartera["Coste_Total"]
+        df_cartera["Rentabilidad %"] = (df_cartera["Ganancia (€)"] / df_cartera["Coste_Total"]) * 100
 
-    # --- MÉTRICAS SUPERIORES ---
-    total_invertido = (df_agrupado['Precio_Compra'] * df_agrupado['Cantidad']).sum()
-    valor_total_cartera = df_agrupado['Valor Total'].sum()
-    beneficio_total = valor_total_cartera - total_invertido
-    
+    # MÉTRICAS TOTALES
+    total_invertido = df_cartera["Coste_Total"].sum()
+    valor_total = df_cartera["Valor Actual"].sum()
+    beneficio_total = valor_total - total_invertido
+    porcentaje_total = (beneficio_total / total_invertido) * 100 if total_invertido > 0 else 0
+
     col1, col2, col3 = st.columns(3)
-    col1.metric("Inversión Real", f"{total_invertido:,.2f} €")
-    col2.metric("Valor Actual", f"{valor_total_cartera:,.2f} €")
-    col3.metric("Beneficio Total", f"{beneficio_total:,.2f} €", delta=f"{(beneficio_total/total_invertido)*100:.2f}%")
+    col1.metric("Invertido Total", f"{total_invertido:,.2f} €")
+    col2.metric("Valor de Mercado", f"{valor_total:,.2f} €")
+    col3.metric("Beneficio Neto", f"{beneficio_total:,.2f} €", delta=f"{porcentaje_total:.2f}%")
 
     st.divider()
 
-    # --- TABLA Y GRÁFICO ---
-    fila_tabla, fila_grafico = st.columns([2, 1])
-
-    with fila_tabla:
-        st.subheader("📋 Detalle de tus activos")
-        # Estilo para colores de rentabilidad
-        st.dataframe(df_agrupado.style.format({
-            "Precio Actual": "{:.3f}€",
-            "Valor Total": "{:.2f}€",
-            "Ganancia Absoluta": "{:.2f}€",
+    # TABLA Y GRÁFICO
+    c_tabla, c_grafico = st.columns([2, 1])
+    
+    with c_tabla:
+        st.subheader("📋 Mis Posiciones")
+        # Mostramos la tabla formateada
+        st.dataframe(df_cartera[["Ticker", "Cantidad", "Precio_Medio", "Precio Mercado", "Ganancia (€)", "Rentabilidad %"]].style.format({
+            "Precio_Medio": "{:.3f}€",
+            "Precio Mercado": "{:.3f}€",
+            "Ganancia (€)": "{:.2f}€",
             "Rentabilidad %": "{:.2f}%"
         }), use_container_width=True)
 
-    with fila_grafico:
-        st.subheader("🍩 Distribución")
-        fig = px.pie(df_agrupado, values='Valor Total', names='Ticker', hole=.4,
-                     color_discrete_sequence=px.colors.qualitative.Pastel)
+    with c_grafico:
+        st.subheader("🏠 Distribución")
+        fig = px.pie(df_cartera, values='Valor Actual', names='Ticker', hole=0.4)
         st.plotly_chart(fig, use_container_width=True)
 
-    if st.button("🗑️ Resetear Cartera"):
-        pd.DataFrame(columns=["Ticker", "Tipo", "Cantidad", "Precio_Compra"]).to_csv("cartera.csv", index=False)
+    if st.button("🗑️ Vaciar Cartera (Cuidado)"):
+        pd.DataFrame(columns=["Ticker", "Cantidad", "Precio_Compra"]).to_csv("cartera.csv", index=False)
         st.rerun()
 else:
-    st.info("Introduce tus activos de MyInvestor para empezar.")
+    st.info("La cartera está vacía. Añade tu primera compra en el menú lateral.")
