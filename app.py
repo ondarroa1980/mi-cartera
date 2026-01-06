@@ -2,73 +2,137 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.express as px
+from datetime import datetime
 
-st.set_page_config(page_title="Mi Cartera MyInvestor", layout="wide")
+st.set_page_config(page_title="Gestor de Inversiones MyInvestor", layout="wide")
 
-st.title("📈 Mi Panel de Inversiones (Versión Segura)")
+# --- ESTILOS ---
+st.markdown("""
+    <style>
+    .main { background-color: #f5f7f9; }
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+    """, unsafe_allow_html=True)
 
-# Función con tus datos de MyInvestor
-def datos_base():
-    return [
-        {"Ticker": "AMP.MC", "Nombre": "Amper", "Cantidad": 10400.0, "Precio_Compra": 0.1946},
-        {"Ticker": "JD", "Nombre": "JD.com", "Cantidad": 58.0, "Precio_Compra": 29.496},
-        {"Ticker": "NXT.MC", "Nombre": "Nueva Expresión Textil", "Cantidad": 2870.0, "Precio_Compra": 0.7184},
-        {"Ticker": "UNH", "Nombre": "UnitedHealth Group", "Cantidad": 7.0, "Precio_Compra": 266.834},
-        {"Ticker": "IWDA.AS", "Nombre": "Fondo MSCI World", "Cantidad": 17.0, "Precio_Compra": 383.306},
-        {"Ticker": "6006.HK", "Nombre": "Fondo Pictet China", "Cantidad": 6.6, "Precio_Compra": 151.512}
-    ]
+st.title("🏦 Mi Cartera de Inversiones")
 
-# Cargamos los datos directamente del código para evitar errores de archivos
-df = pd.DataFrame(datos_base())
+# --- FUNCIONES DE APOYO ---
+def get_conversion_rate():
+    try:
+        return yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+    except:
+        return 1.09 # Cambio aproximado si falla la API
 
-if not df.empty:
+def cargar_datos():
+    try:
+        df = pd.read_csv("cartera.csv")
+        df['Fecha'] = pd.to_datetime(df['Fecha'])
+        return df
+    except:
+        return pd.DataFrame(columns=["Fecha", "Ticker", "Nombre", "Cantidad", "Precio_Compra", "Tipo", "Moneda"])
+
+df_raw = cargar_datos()
+
+# --- FORMULARIO LATERAL ---
+with st.sidebar:
+    st.header("➕ Registrar Operación")
+    tipo = st.selectbox("Tipo de Activo", ["Acción", "Fondo"])
+    ticker = st.text_input("Ticker (ej: UNH, NXT.MC, AMP.MC)").upper()
+    nombre = st.text_input("Nombre del Activo")
+    fecha = st.date_input("Fecha de compra", datetime.now())
+    cantidad = st.number_input("Cantidad de títulos", min_value=0.0, step=0.1)
+    precio = st.number_input("Precio de compra (en su moneda original)", min_value=0.0)
+    moneda = st.selectbox("Moneda de la compra", ["EUR", "USD"])
+    
+    if st.button("Añadir a la Cartera"):
+        nueva_fila = pd.DataFrame([[fecha, ticker, nombre, cantidad, precio, tipo, moneda]], 
+                                 columns=["Fecha", "Ticker", "Nombre", "Cantidad", "Precio_Compra", "Tipo", "Moneda"])
+        df_updated = pd.concat([df_raw, nueva_fila], ignore_index=True)
+        df_updated.to_csv("cartera.csv", index=False)
+        st.success("Operación registrada")
+        st.rerun()
+
+# --- PROCESAMIENTO DE DATOS ---
+if not df_raw.empty:
+    rate = get_conversion_rate()
+    
     with st.spinner('Actualizando precios de mercado...'):
-        resultados = []
-        for _, row in df.iterrows():
+        # 1. Agrupar por Ticker para obtener precios actuales
+        unique_tickers = df_raw['Ticker'].unique()
+        precios_vivos = {}
+        for t in unique_tickers:
             try:
-                # Intentamos obtener el precio
-                ticker = yf.Ticker(row['Ticker'])
-                hist = ticker.history(period="1d")
-                if not hist.empty:
-                    p_act = hist["Close"].iloc[-1]
-                else:
-                    p_act = row['Precio_Compra'] # Si no hay datos, usamos precio compra
+                p = yf.Ticker(t).history(period="1d")["Close"].iloc[-1]
+                precios_vivos[t] = p
             except:
-                p_act = row['Precio_Compra'] # Si hay error, usamos precio compra
-            
-            v_mercado = p_act * row['Cantidad']
-            coste_total = row['Precio_Compra'] * row['Cantidad']
-            ganancia = v_mercado - coste_total
-            
-            resultados.append({
-                "Activo": row['Nombre'],
-                "Cant.": row['Cantidad'],
-                "Coste Medio": round(row['Precio_Compra'], 3),
-                "Precio Act.": round(p_act, 3),
-                "Valor Mercado": round(v_mercado, 2),
-                "Ganancia (€)": round(ganancia, 2)
-            })
+                precios_vivos[t] = 0
+
+        # 2. Calcular valores por cada fila
+        df_calc = df_raw.copy()
+        df_calc['Precio_Actual'] = df_calc['Ticker'].map(precios_vivos)
         
-        df_res = pd.DataFrame(resultados)
+        # Convertir a EUR si la moneda es USD
+        def conversion_eur(row, col_name):
+            val = row[col_name]
+            return val / rate if row['Moneda'] == "USD" else val
 
-    # Métricas principales
-    t_inv = (df['Precio_Compra'] * df['Cantidad']).sum()
-    t_val = df_res["Valor Mercado"].sum()
-    t_gan = t_val - t_inv
+        df_calc['Precio_Compra_EUR'] = df_calc.apply(lambda r: conversion_eur(r, 'Precio_Compra'), axis=1)
+        df_calc['Precio_Actual_EUR'] = df_calc.apply(lambda r: conversion_eur(r, 'Precio_Actual'), axis=1)
+        
+        df_calc['Inversion_EUR'] = df_calc['Precio_Compra_EUR'] * df_calc['Cantidad']
+        df_calc['Valor_Actual_EUR'] = df_calc['Precio_Actual_EUR'] * df_calc['Cantidad']
+        df_calc['Ganancia_EUR'] = df_calc['Valor_Actual_EUR'] - df_calc['Inversion_EUR']
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Inversión Total", f"{t_inv:,.2f} €")
-    c2.metric("Valor Cartera", f"{t_val:,.2f} €")
-    c3.metric("Balance Total", f"{t_gan:,.2f} €", delta=f"{(t_gan/t_inv*100):.2f}%" if t_inv > 0 else "0%")
+    # --- MÉTRICAS GLOBALES ---
+    total_inv = df_calc['Inversion_EUR'].sum()
+    total_val = df_calc['Valor_Actual_EUR'].sum()
+    total_gan = total_val - total_inv
+    
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Inversión Total", f"{total_inv:,.2f} €")
+    m2.metric("Valor Actual", f"{total_val:,.2f} €")
+    m3.metric("Ganancia Neta", f"{total_gan:,.2f} €", delta=f"{(total_gan/total_inv*100):.2f}%")
 
+    # --- SECCIONES SEPARADAS ---
     st.divider()
     
-    # Tabla y Gráfico
-    col_t, col_g = st.columns([2, 1])
-    with col_t:
-        st.dataframe(df_res, use_container_width=True)
-    with col_g:
-        fig = px.pie(df_res, values='Valor Mercado', names='Activo', hole=0.4)
-        st.plotly_chart(fig, use_container_width=True)
+    def mostrar_seccion(titulo, tipo_filtro):
+        st.subheader(titulo)
+        data = df_calc[df_calc['Tipo'] == tipo_filtro]
+        if not data.empty:
+            # Agrupamos para mostrar resumen por activo
+            resumen = data.groupby('Nombre').agg({
+                'Cantidad': 'sum',
+                'Inversion_EUR': 'sum',
+                'Valor_Actual_EUR': 'sum',
+                'Ganancia_EUR': 'sum'
+            }).reset_index()
+            resumen['Rent. %'] = (resumen['Ganancia_EUR'] / resumen['Inversion_EUR']) * 100
+            
+            st.dataframe(resumen.style.format({
+                'Cantidad': '{:.2f}',
+                'Inversion_EUR': '{:.2f} €',
+                'Valor_Actual_EUR': '{:.2f} €',
+                'Ganancia_EUR': '{:.2f} €',
+                'Rent. %': '{:.2f}%'
+            }), use_container_width=True)
+        else:
+            st.info(f"No hay {titulo.lower()} registrados.")
+
+    col_left, col_right = st.columns(2)
+    with col_left:
+        mostrar_seccion("📈 Acciones", "Acción")
+    with col_right:
+        mostrar_seccion("🧱 Fondos", "Fondo")
+
+    # --- GRÁFICO ---
+    st.divider()
+    fig = px.pie(df_calc, values='Valor_Actual_EUR', names='Nombre', hole=0.4, title="Distribución de mi Patrimonio")
+    st.plotly_chart(fig, use_container_width=True)
+
+    if st.button("🗑️ Borrar todo y empezar de cero"):
+        pd.DataFrame(columns=["Fecha", "Ticker", "Nombre", "Cantidad", "Precio_Compra", "Tipo", "Moneda"]).to_csv("cartera.csv", index=False)
+        st.rerun()
+
 else:
-    st.info("Cargando datos...")
+    st.info("La cartera está vacía. Añade tu primera operación en el menú lateral.")
