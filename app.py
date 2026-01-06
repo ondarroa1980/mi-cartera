@@ -1,74 +1,87 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
+import plotly.express as px
 
-# Configuración de la página
-st.set_page_config(page_title="Mi Cartera de Inversiones", layout="wide")
+st.set_page_config(page_title="Mi Cartera Total", layout="wide")
 
-st.title("📈 Mi Gestor de Acciones Personal")
+st.title("🏦 Mi Gestor de Inversiones Global")
 
-# 1. Función para cargar datos (usamos un CSV como base de datos simple)
+# Función para cargar datos
 def cargar_datos():
     try:
-        return pd.read_csv("cartera.csv")
+        df = pd.read_csv("cartera.csv")
+        # Asegurarnos de que existe la columna 'Tipo'
+        if 'Tipo' not in df.columns:
+            df['Tipo'] = 'Acción'
+        return df
     except FileNotFoundError:
-        return pd.DataFrame(columns=["Ticker", "Fecha", "Cantidad", "Precio Compra"])
+        return pd.DataFrame(columns=["Ticker", "Tipo", "Cantidad", "Precio Compra"])
 
-# 2. Formulario para añadir nuevas acciones
+df = cargar_datos()
+
+# --- BARRA LATERAL: AÑADIR ACTIVOS ---
 with st.sidebar:
-    st.header("Añadir Nueva Compra")
-    ticker = st.text_input("Símbolo (ej: AAPL, TSLA, MSFT)").upper()
-    fecha = st.date_input("Fecha de compra", datetime.now())
-    cantidad = st.number_input("Cantidad de acciones", min_value=0.0, step=1.0)
-    precio_compra = st.number_input("Precio de compra ($)", min_value=0.0)
+    st.header("➕ Añadir Inversión")
+    tipo = st.selectbox("Tipo de activo", ["Acción", "Fondo Indexado", "Monetario", "ETF"])
+    ticker = st.text_input("Símbolo / Ticker").upper()
+    cantidad = st.number_input("Cantidad", min_value=0.0, step=0.1)
+    precio_compra = st.number_input("Precio de compra", min_value=0.0)
     
-    if st.button("Guardar Acción"):
-        nueva_fila = pd.DataFrame([[ticker, fecha, cantidad, precio_compra]], 
-                                 columns=["Ticker", "Fecha", "Cantidad", "Precio Compra"])
-        df = cargar_datos()
+    if st.button("Guardar"):
+        nueva_fila = pd.DataFrame([[ticker, tipo, cantidad, precio_compra]], 
+                                 columns=["Ticker", "Tipo", "Cantidad", "Precio Compra"])
         df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv("cartera.csv", index=False)
-        st.success(f"¡{ticker} añadido!")
+        st.success("¡Guardado!")
+        st.rerun()
 
-# 3. Mostrar y calcular cartera
-df_cartera = cargar_datos()
+# --- CUERPO PRINCIPAL ---
+if not df.empty:
+    with st.spinner('Actualizando precios...'):
+        precios_actuales = []
+        nombres = []
+        
+        for t in df['Ticker']:
+            try:
+                accion = yf.Ticker(t)
+                # Intentamos sacar el nombre real de la empresa/fondo
+                nombres.append(accion.info.get('shortName', t))
+                precios_actuales.append(accion.history(period="1d")['Close'].iloc[-1])
+            except:
+                nombres.append(t)
+                precios_actuales.append(0)
 
-if not df_cartera.empty:
-    st.subheader("Tu Portafolio en Tiempo Real")
+        df['Nombre'] = nombres
+        df['Precio Actual'] = precios_actuales
+        df['Valor Total'] = df['Precio Actual'] * df['Cantidad']
+        df['Ganancia'] = (df['Precio Actual'] - df['Precio Compra']) * df['Cantidad']
+
+    # --- MÉTRICAS ---
+    total_invertido = (df['Precio Compra'] * df['Cantidad']).sum()
+    valor_actual = df['Valor Total'].sum()
+    ganancia_total = valor_actual - total_invertido
     
-    precios_actuales = []
-    beneficios = []
-    
-    # Obtener precios de internet
-    for index, row in df_cartera.iterrows():
-        try:
-            accion = yf.Ticker(row['Ticker'])
-            precio_hoy = accion.history(period="1d")['Close'].iloc[-1]
-            precios_actuales.append(round(precio_hoy, 2))
-            
-            # Cálculo: (Precio Actual - Precio Compra) * Cantidad
-            ganancia = (precio_hoy - row['Precio Compra']) * row['Cantidad']
-            beneficios.append(round(ganancia, 2))
-        except:
-            precios_actuales.append(0)
-            beneficios.append(0)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Inversión Total", f"{total_invertido:,.2f}€")
+    c2.metric("Valor de Cartera", f"{valor_actual:,.2f}€")
+    c3.metric("Ganancia/Pérdida", f"{ganancia_total:,.2f}€", delta=f"{ganancia_total:,.2f}€")
 
-    df_cartera['Precio Actual'] = precios_actuales
-    df_cartera['Beneficio/Pérdida ($)'] = beneficios
-
-    # Aplicar colores (Verde si gana, Rojo si pierde)
-    def color_beneficio(val):
-        color = 'green' if val > 0 else 'red'
-        return f'color: {color}'
-
-    st.dataframe(df_cartera.style.applymap(color_beneficio, subset=['Beneficio/Pérdida ($)']))
-
-    # 4. Resumen Total
-    total_ganado = sum(beneficios)
+    # --- GRÁFICO CIRCULAR ---
     st.divider()
-    col1, col2 = st.columns(2)
-    col1.metric("Balance Total de la Cartera", f"${total_ganado:,.2f}", 
-                delta=f"{total_ganado:,.2f}")
+    col_tabla, col_grafico = st.columns([2, 1])
+    
+    with col_tabla:
+        st.subheader("📋 Detalle de Posiciones")
+        st.dataframe(df[['Ticker', 'Tipo', 'Cantidad', 'Precio Compra', 'Precio Actual', 'Ganancia']], use_container_width=True)
+
+    with col_grafico:
+        st.subheader("🏠 Distribución")
+        fig = px.pie(df, values='Valor Total', names='Ticker', hole=0.4)
+        st.plotly_chart(fig, use_container_width=True)
+
+    if st.button("🗑️ Borrar toda la cartera"):
+        pd.DataFrame(columns=["Ticker", "Tipo", "Cantidad", "Precio Compra"]).to_csv("cartera.csv", index=False)
+        st.rerun()
 else:
-    st.info("Aún no tienes acciones. Añade una en el menú de la izquierda.")
+    st.info("Tu cartera está vacía. Añade tu primera inversión en el menú de la izquierda.")
