@@ -51,25 +51,25 @@ if check_password():
             {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
 
-            # FONDOS MYINVESTOR
+            # FONDOS MYINVESTOR (Datos de tu imagen real)
             {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    ARCHIVO_CSV = "cartera_familiar_v35.csv"
+    ARCHIVO_CSV = "cartera_familiar_v38.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
+    # Lógica de colores fija (Corregida para evitar ValueErrors)
     def resaltar_gp(val):
-        # Lógica para resaltar celdas que contienen texto formateado
         if isinstance(val, str) and "€" in val:
-            # Extraer el valor numérico antes del símbolo €
             try:
                 num = float(val.split("€")[0].replace(",", "").strip())
-                return '#d4edda' if num > 0 else '#f8d7da' if num < 0 else None
+                if num > 0: return 'background-color: #d4edda'
+                if num < 0: return 'background-color: #f8d7da'
             except: return None
         return None
 
@@ -104,6 +104,7 @@ if check_password():
     # --- 6. INTERFAZ ---
     st.title("🏦 Cuadro de Mando Patrimonial")
 
+    # Métricas principales
     c1, c2, c3 = st.columns(3)
     gp_acc = df[df['Tipo'] == 'Acción']['GP_EUR'].sum()
     gp_fon = df[df['Tipo'] == 'Fondo']['GP_EUR'].sum()
@@ -123,32 +124,49 @@ if check_password():
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
         
-        if filtro == "Fondo":
-            st.warning("💡 **RELLENAR ESTO:** Haz doble clic en la casilla 'P_Act' de la tabla resumen para actualizar el precio del banco.")
-        
+        # Agrupación Resumen
         res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','GP_EUR':'sum', 'P_Act': 'first'}).reset_index()
         res['Rent. %'] = (res['GP_EUR'] / res['Coste'] * 100)
         
-        # Aplicar formato selectivo
-        res['Precio Actual'] = res.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
-        res['Ganancia (G/P)'] = res.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
+        # Formateo selectivo
+        res['P_Act_Fmt'] = res.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
+        res['Ganancia_Fmt'] = res.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
         
         st.subheader(f"📊 Situación Actual ({titulo})")
-        cols = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Precio Actual', 'Ganancia (G/P)', 'Rent. %']
         
-        st.dataframe(res[cols].style.applymap(resaltar_gp, subset=['Ganancia (G/P)']).format({
-            "Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"
-        }), use_container_width=True)
+        # TABLA EDITABLE PARA FONDOS, NORMAL PARA ACCIONES
+        cols_disp = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']
+        column_config = {"P_Act_Fmt": "P_Act", "Ganancia_Fmt": "Ganancia (G/P)"}
+
+        if filtro == "Fondo":
+            st.warning("💡 **RELLENAR ESTO:** Haz doble clic en la casilla 'P_Act' de la tabla para actualizar el precio del banco.")
+            # Editor para fondos
+            res_editable = res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act', 'Ganancia_Fmt', 'Rent. %']]
+            edited = st.data_editor(
+                res_editable.style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}),
+                use_container_width=True,
+                disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'],
+                key=f"editor_{filtro}"
+            )
+            # Guardar cambios
+            for i, row in edited.iterrows():
+                st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+        else:
+            # Tabla normal para acciones
+            st.dataframe(
+                res[cols_disp].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}),
+                use_container_width=True
+            )
         
-        st.subheader(f"📜 Historial de Operaciones ({titulo})")
+        # HISTORIAL
+        st.subheader(f"📜 Detalle por Operaciones ({titulo})")
         for n in df_sub['Nombre'].unique():
             h = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
             h['Precio'] = h.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
             h['Ganancia'] = h.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
             with st.expander(f"Detalle: {n}"):
-                st.table(h[['Fecha','Cant','Coste','Precio','Ganancia','Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia']).format({
-                    "Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"
-                }))
+                st.table(h[['Fecha','Cant','Coste','Precio','Ganancia','Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia']).format({"Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
