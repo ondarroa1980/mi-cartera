@@ -29,7 +29,7 @@ def check_password():
 
 if check_password():
     
-    # --- 3. BASE DE DATOS MAESTRA (ACTUALIZADA CON TUS DATOS REALES) ---
+    # --- 3. BASE DE DATOS MAESTRA ---
     def cargar_datos_maestros():
         return [
             # ACCIONES (MyInvestor)
@@ -51,12 +51,11 @@ if check_password():
             {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
 
-            # FONDOS MYINVESTOR (Actualizado con tu imagen: Participaciones 549.94 y Invertido 6516.20)
+            # FONDOS MYINVESTOR
             {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # Gestión de archivos
     ARCHIVO_CSV = "cartera_familiar_v35.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
@@ -64,32 +63,30 @@ if check_password():
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    # Lógica de colores
     def resaltar_gp(val):
-        color = '#d4edda' if val > 0 else '#f8d7da' if val < 0 else None
-        return f'background-color: {color}'
+        # Lógica para resaltar celdas que contienen texto formateado
+        if isinstance(val, str) and "€" in val:
+            # Extraer el valor numérico antes del símbolo €
+            try:
+                num = float(val.split("€")[0].replace(",", "").strip())
+                return '#d4edda' if num > 0 else '#f8d7da' if num < 0 else None
+            except: return None
+        return None
 
-    # --- 4. BARRA LATERAL (Sincronización con Divisa) ---
+    # --- 4. BARRA LATERAL ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
             try:
-                # Obtener tipo de cambio EUR/USD
                 rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
                 st.session_state.cambio_usd = rate
-                
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
-                        if row['Moneda'] == "USD":
-                            # Guardamos el precio en Euros, pero sabemos que viene de USD
-                            st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate
-                        else:
-                            st.session_state.df_cartera.at[i, 'P_Act'] = p_raw
-                
+                        st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.rerun()
-            except: st.error("Error al sincronizar con Yahoo Finance.")
+            except: st.error("Error al sincronizar.")
         
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
@@ -98,21 +95,29 @@ if check_password():
 
     # --- 5. PROCESAMIENTO ---
     df = st.session_state.df_cartera.copy()
-    rate_usd = getattr(st.session_state, 'cambio_usd', 1.09) # Valor por defecto si no hay sync
+    rate_usd = getattr(st.session_state, 'cambio_usd', 1.09)
     
     df['Valor_Actual'] = df['P_Act'] * df['Cant']
-    df['G/P (€)'] = df['Valor_Actual'] - df['Coste']
-    df['Rent. %'] = (df['G/P (€)'] / df['Coste'] * 100).fillna(0)
+    df['GP_EUR'] = df['Valor_Actual'] - df['Coste']
+    df['Rent. %'] = (df['GP_EUR'] / df['Coste'] * 100).fillna(0)
 
     # --- 6. INTERFAZ ---
     st.title("🏦 Cuadro de Mando Patrimonial")
 
-    # Métricas principales
     c1, c2, c3 = st.columns(3)
-    c1.metric("G/P Acciones", f"{df[df['Tipo'] == 'Acción']['G/P (€)'].sum():,.2f} €")
-    c2.metric("G/P Fondos", f"{df[df['Tipo'] == 'Fondo']['G/P (€)'].sum():,.2f} €")
-    c3.metric("G/P TOTAL GLOBAL", f"{df['G/P (€)'].sum():,.2f} €")
+    gp_acc = df[df['Tipo'] == 'Acción']['GP_EUR'].sum()
+    gp_fon = df[df['Tipo'] == 'Fondo']['GP_EUR'].sum()
+    gp_tot = df['GP_EUR'].sum()
+
+    c1.metric("G/P Acciones", f"{gp_acc:,.2f} € ({gp_acc*rate_usd:,.2f} $)")
+    c2.metric("G/P Fondos", f"{gp_fon:,.2f} €")
+    c3.metric("G/P TOTAL GLOBAL", f"{gp_tot:,.2f} € ({gp_tot*rate_usd:,.2f} $)")
     st.divider()
+
+    def fmt_selectivo(val_eur, moneda, decimales=2):
+        if moneda == "USD":
+            return f"{val_eur:,.{decimales}f} € ({val_eur*rate_usd:,.2f} $)"
+        return f"{val_eur:,.{decimales}f} €"
 
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
@@ -121,40 +126,33 @@ if check_password():
         if filtro == "Fondo":
             st.warning("💡 **RELLENAR ESTO:** Haz doble clic en la casilla 'P_Act' de la tabla resumen para actualizar el precio del banco.")
         
-        # Agrupación para el resumen
-        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','G/P (€)':'sum', 'P_Act': 'first'}).reset_index()
-        res['Rent. %'] = (res['G/P (€)'] / res['Coste'] * 100)
+        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','GP_EUR':'sum', 'P_Act': 'first'}).reset_index()
+        res['Rent. %'] = (res['GP_EUR'] / res['Coste'] * 100)
         
-        # --- FORMATEO DINÁMICO DE DIVISA ---
-        def formatear_precio(row):
-            if row['Moneda'] == "USD":
-                precio_usd = row['P_Act'] * rate_usd
-                return f"{row['P_Act']:.2f} € ({precio_usd:.2f} $)"
-            return f"{row['P_Act']:.4f} €"
-
-        res['Precio'] = res.apply(formatear_precio, axis=1)
+        # Aplicar formato selectivo
+        res['Precio Actual'] = res.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
+        res['Ganancia (G/P)'] = res.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
         
         st.subheader(f"📊 Situación Actual ({titulo})")
-        cols = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Precio', 'G/P (€)', 'Rent. %']
+        cols = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Precio Actual', 'Ganancia (G/P)', 'Rent. %']
         
-        st.dataframe(res[cols].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
-            "Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","G/P (€)":"{:.2f} €","Rent. %":"{:.2f}%"
+        st.dataframe(res[cols].style.applymap(resaltar_gp, subset=['Ganancia (G/P)']).format({
+            "Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"
         }), use_container_width=True)
         
-        # HISTORIAL
         st.subheader(f"📜 Historial de Operaciones ({titulo})")
         for n in df_sub['Nombre'].unique():
             h = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
-            h['Precio'] = h.apply(formatear_precio, axis=1)
+            h['Precio'] = h.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
+            h['Ganancia'] = h.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
             with st.expander(f"Detalle: {n}"):
-                st.table(h[['Fecha','Cant','Coste','Precio','G/P (€)','Rent. %']].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
-                    "Cant":"{:.4f}","Coste":"{:.2f} €","G/P (€)":"{:.2f} €","Rent. %":"{:.2f}%"
+                st.table(h[['Fecha','Cant','Coste','Precio','Ganancia','Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia']).format({
+                    "Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"
                 }))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # Gráfico circular
     st.divider()
     st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución del Patrimonio", hole=0.4), use_container_width=True)
