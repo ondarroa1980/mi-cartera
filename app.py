@@ -4,13 +4,13 @@ import yfinance as yf
 import plotly.express as px
 from datetime import datetime
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO) ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Nuestra Cartera Familiar", layout="wide")
 
 # --- 2. SISTEMA DE SEGURIDAD ---
 def check_password():
     def password_entered():
-        if st.session_state["password"] == "1234": # <--- CONTRASEÑA
+        if st.session_state["password"] == "1234": # <--- TU CONTRASEÑA
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
@@ -18,17 +18,18 @@ def check_password():
 
     if "password_correct" not in st.session_state:
         st.title("🔐 Acceso Privado")
-        st.text_input("Introduce la clave para ver la cartera:", type="password", on_change=password_entered, key="password")
+        st.text_input("Introduce la clave familiar:", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
         st.title("🔐 Acceso Privado")
-        st.text_input("Clave incorrecta. Inténtalo de nuevo:", type="password", on_change=password_entered, key="password")
-        st.error("😕 Ups, esa no es la contraseña.")
+        st.text_input("Clave incorrecta:", type="password", on_change=password_entered, key="password")
+        st.error("😕 Esa no es la clave.")
         return False
     return True
 
 if check_password():
-    # --- 3. BASE DE DATOS MAESTRA (DESGLOSE COMPLETO) ---
+    
+    # --- 3. BASE DE DATOS (Yo actualizaré esto cuando me digas) ---
     def cargar_datos_maestros():
         return [
             # ACCIONES (MyInvestor)
@@ -38,7 +39,7 @@ if check_password():
             {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 266.83},
             {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 29.50},
 
-            # FONDOS RENTA 4 (Desglose por suscripciones)
+            # FONDOS RENTA 4 (Historial según informe)
             {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86},
             {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22},
             {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22},
@@ -50,7 +51,7 @@ if check_password():
             {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368},
             {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368},
 
-            # FONDOS MYINVESTOR (Desglose por suscripciones)
+            # FONDOS MYINVESTOR (Historial según informe)
             {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 416.395, "Coste": 5016.20, "P_Act": 12.33},
             {"Fecha": "2025-03-04", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 43.484, "Coste": 500.00, "P_Act": 12.33},
             {"Fecha": "2025-05-01", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 47.216, "Coste": 500.00, "P_Act": 12.33},
@@ -58,7 +59,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51}
         ]
 
-    ARCHIVO_CSV = "cartera_final_v29.csv"
+    ARCHIVO_CSV = "cartera_familiar_final.csv"
 
     if 'df_cartera' not in st.session_state:
         try:
@@ -67,93 +68,84 @@ if check_password():
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    # --- 4. LOGICA DE COLORES ---
     def resaltar_gp(val):
         color = '#d4edda' if val > 0 else '#f8d7da' if val < 0 else None
         return f'background-color: {color}'
 
-    # --- 5. BARRA LATERAL ---
+    # --- 4. SIDEBAR ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
-            try:
-                rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-                for i, row in st.session_state.df_cartera.iterrows():
-                    if row['Tipo'] == "Acción":
-                        p = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
-                        st.session_state.df_cartera.at[i, 'P_Act'] = p / rate if row['Ticker'] in ['UNH', 'JD'] else p
-                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                st.rerun()
-            except: st.error("Error de red")
+            rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+            for i, row in st.session_state.df_cartera.iterrows():
+                if row['Tipo'] == "Acción":
+                    p = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
+                    st.session_state.df_cartera.at[i, 'P_Act'] = p / rate if row['Ticker'] in ['UNH', 'JD'] else p
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.rerun()
         
         st.divider()
-        st.header("➕ Añadir Inversión")
-        with st.form("registro"):
-            f_tipo = st.selectbox("Tipo", ["Acción", "Fondo"])
-            f_broker = st.selectbox("Broker", ["MyInvestor", "Renta 4"])
-            f_fecha = st.date_input("Fecha")
-            f_nombre = st.text_input("Nombre")
-            f_ticker = st.text_input("Ticker / ISIN").upper()
-            f_cant = st.number_input("Cantidad", min_value=0.0)
-            f_coste = st.number_input("Inversión Total (€)", min_value=0.0)
-            f_pact = st.number_input("Precio Act. (€)", min_value=0.0)
-            if st.form_submit_button("Guardar en Historial"):
-                n = pd.DataFrame([{"Fecha": str(f_fecha), "Tipo": f_tipo, "Broker": f_broker, "Ticker": f_ticker, "Nombre": f_nombre, "Cant": f_cant, "Coste": f_coste, "P_Act": f_pact}])
-                st.session_state.df_cartera = pd.concat([st.session_state.df_cartera, n], ignore_index=True)
-                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                st.rerun()
-
-        if st.button("🚨 Reiniciar Datos"):
+        st.info("Para compras, ventas o traspasos complejos, consulta con tu asistente para actualizar el código maestro.")
+        
+        if st.button("🚨 Reiniciar a Datos Maestro"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
             st.rerun()
 
-    # --- 6. PROCESAMIENTO ---
+    # --- 5. PROCESAMIENTO ---
     df = st.session_state.df_cartera.copy()
     df['Valor_Actual'] = df['P_Act'] * df['Cant']
     df['G/P (€)'] = df['Valor_Actual'] - df['Coste']
     df['Rent. %'] = (df['G/P (€)'] / df['Coste'] * 100).fillna(0)
 
-    # --- 7. INTERFAZ ---
-    st.title("🏦 Cuadro de Mando Patrimonial Familiar")
+    # --- 6. INTERFAZ ---
+    st.title("🏦 Cuadro de Mando Patrimonial")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("G/P Acciones", f"{df[df['Tipo'] == 'Acción']['G/P (€)'].sum():,.2f} €")
     c2.metric("G/P Fondos", f"{df[df['Tipo'] == 'Fondo']['G/P (€)'].sum():,.2f} €")
-    c3.metric("G/P TOTAL GLOBAL", f"{df['G/P (€)'].sum():,.2f} €")
+    c3.metric("G/P TOTAL", f"{df['G/P (€)'].sum():,.2f} €")
 
     st.divider()
 
-    def mostrar_seccion_pro(titulo, filtro_tipo):
+    def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
-        df_sub = df[df['Tipo'] == filtro_tipo]
+        df_sub = df[df['Tipo'] == filtro]
         
-        # RESUMEN (Agrupado y con G/P al final)
-        resumen = df_sub.groupby(['Nombre', 'Broker']).agg({
-            'Cant': 'sum', 'Coste': 'sum', 'Valor_Actual': 'sum', 'G/P (€)': 'sum'
-        }).reset_index()
-        resumen['Rent. %'] = (resumen['G/P (€)'] / resumen['Coste'] * 100)
+        if filtro == "Fondo":
+            st.warning("💡 **RELLENAR ESTO:** Haz doble clic en la casilla 'P_Act' de la tabla resumen para actualizar el precio del banco.")
+        
+        # RESUMEN
+        res = df_sub.groupby(['Nombre', 'Broker']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','G/P (€)':'sum'}).reset_index()
+        res['Rent. %'] = (res['G/P (€)'] / res['Coste'] * 100)
         
         st.subheader(f"📊 Situación Actual ({titulo})")
-        cols_res = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'G/P (€)', 'Rent. %']
-        st.dataframe(resumen[cols_res].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
-            "Cant": "{:.2f}", "Coste": "{:.2f} €", "Valor_Actual": "{:.2f} €", "G/P (€)": "{:.2f} €", "Rent. %": "{:.2f}%"
-        }), use_container_width=True)
+        cols = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'G/P (€)', 'Rent. %']
+        # Usamos data_editor para los fondos para que la nota tenga sentido
+        if filtro == "Fondo":
+            edited_df = st.data_editor(res[cols].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
+                "Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","G/P (€)":"{:.2f} €","Rent. %":"{:.2f}%"
+            }), use_container_width=True, disabled=['Broker','Nombre','Cant','Coste','Valor_Actual','G/P (€)','Rent. %'])
+        else:
+            st.dataframe(res[cols].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
+                "Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","G/P (€)":"{:.2f} €","Rent. %":"{:.2f}%"
+            }), use_container_width=True)
         
-        # HISTORIAL (Desplegables)
+        # HISTORIAL
         st.subheader(f"📜 Historial de Operaciones ({titulo})")
-        for nombre in df_sub['Nombre'].unique():
-            compras = df_sub[df_sub['Nombre'] == nombre].sort_values(by='Fecha', ascending=False)
-            with st.expander(f"Ver desglose por fecha: {nombre}"):
-                cols_hist = ['Fecha', 'Cant', 'Coste', 'P_Act', 'G/P (€)', 'Rent. %']
-                st.table(compras[cols_hist].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
-                    "Cant": "{:.4f}", "Coste": "{:.2f} €", "P_Act": "{:.4f} €", "G/P (€)": "{:.2f} €", "Rent. %": "{:.2f}%"
+        for n in df_sub['Nombre'].unique():
+            h = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False)
+            with st.expander(f"Detalle: {n}"):
+                if filtro == "Fondo":
+                    st.caption("📝 Rellenar manualmente con precio actual en la columna P_Act si deseas ver el desglose exacto.")
+                st.table(h[['Fecha','Cant','Coste','P_Act','G/P (€)','Rent. %']].style.applymap(resaltar_gp, subset=['G/P (€)', 'Rent. %']).format({
+                    "Cant":"{:.4f}","Coste":"{:.2f} €","P_Act":"{:.4f} €","G/P (€)":"{:.2f} €","Rent. %":"{:.2f}%"
                 }))
 
-    mostrar_seccion_pro("Acciones", "Acción")
+    mostrar_seccion("Acciones", "Acción")
     st.divider()
-    mostrar_seccion_pro("Fondos de Inversión", "Fondo")
+    mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 8. GRÁFICO ---
+    # --- 7. GRÁFICO ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución de nuestro Dinero", hole=0.4), use_container_width=True)
+    st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución del Patrimonio", hole=0.4), use_container_width=True)
