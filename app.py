@@ -76,13 +76,15 @@ if check_password():
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
-            rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-            for i, row in st.session_state.df_cartera.iterrows():
-                if row['Tipo'] == "Acción":
-                    p = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
-                    st.session_state.df_cartera.at[i, 'P_Act'] = p / rate if row['Ticker'] in ['UNH', 'JD'] else p
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.rerun()
+            try:
+                rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+                for i, row in st.session_state.df_cartera.iterrows():
+                    if row['Tipo'] == "Acción":
+                        p = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
+                        st.session_state.df_cartera.at[i, 'P_Act'] = p / rate if row['Ticker'] in ['UNH', 'JD'] else p
+                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                st.rerun()
+            except: st.error("Error de red")
         
         st.divider()
         st.info("Para compras, ventas o traspasos complejos, consulta con tu asistente para actualizar el código maestro.")
