@@ -5,7 +5,7 @@ import plotly.express as px
 from datetime import datetime
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Nuestra Cartera Familiar", layout="wide")
+st.set_page_config(page_title="Nuestra Cartera Familiar - v40", layout="wide")
 
 # --- 2. SISTEMA DE SEGURIDAD ---
 def check_password():
@@ -23,7 +23,7 @@ def check_password():
 
 if check_password():
     
-    # --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS) ---
+    # --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS ÚNICAMENTE) ---
     def cargar_datos_maestros():
         return [
             # ACCIONES
@@ -47,13 +47,14 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # --- 4. BASE DE DATOS DE OPERACIONES CERRADAS ---
-    def cargar_operaciones_realizadas():
+    # --- 4. DIARIO DE OPERACIONES (Ventas cerradas) ---
+    def cargar_diario_operaciones():
         return [
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Acción": "Venta Total", "Invertido": 9999.96, "Recuperado": 9443.64, "Resultado": -556.32, "Motivo": "Inversión estancada - Reasignación capital"}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Accion": "Venta Total", "Invertido": 9999.96, "Recuperado": 9443.64, "Resultado": -556.32, "Comentario": "Reasignación de capital"}
         ]
 
-    ARCHIVO_CSV = "cartera_familiar_v39.csv"
+    # Gestión de persistencia
+    ARCHIVO_CSV = "cartera_v40.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
@@ -75,7 +76,7 @@ if check_password():
         if st.button("🔄 Sincronizar Bolsa"):
             try:
                 rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-                st.session_state.cambio_usd = rate
+                st.session_state.rate_sync = rate
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
@@ -90,56 +91,76 @@ if check_password():
             st.rerun()
 
     # --- 6. PROCESAMIENTO ---
+    rate_val = getattr(st.session_state, 'rate_sync', 1.09)
     df = st.session_state.df_cartera.copy()
-    rate_usd = getattr(st.session_state, 'cambio_usd', 1.09)
     df['Valor_Actual'] = df['P_Act'] * df['Cant']
     df['GP_EUR'] = df['Valor_Actual'] - df['Coste']
     df['Rent. %'] = (df['GP_EUR'] / df['Coste'] * 100).fillna(0)
 
-    # --- 7. INTERFAZ PRINCIPAL ---
+    # --- 7. INTERFAZ ---
     st.title("🏦 Cuadro de Mando Patrimonial")
+    
     c1, c2, c3 = st.columns(3)
     gp_acc = df[df['Tipo'] == 'Acción']['GP_EUR'].sum()
     gp_fon = df[df['Tipo'] == 'Fondo']['GP_EUR'].sum()
     gp_tot = df['GP_EUR'].sum()
 
-    c1.metric("G/P Acciones", f"{gp_acc:,.2f} € ({gp_acc*rate_usd:,.2f} $)")
+    c1.metric("G/P Acciones", f"{gp_acc:,.2f} € ({gp_acc*rate_val:,.2f} $)")
     c2.metric("G/P Fondos", f"{gp_fon:,.2f} €")
-    c3.metric("G/P TOTAL VIVO", f"{gp_tot:,.2f} € ({gp_tot*rate_usd:,.2f} $)")
+    c3.metric("G/P TOTAL VIVO", f"{gp_tot:,.2f} € ({gp_tot*rate_val:,.2f} $)")
     st.divider()
 
-    def fmt_selectivo(val_eur, moneda, decimales=2):
+    def fmt_bi(val_eur, moneda, dec=2):
         if moneda == "USD":
-            return f"{val_eur:,.{decimales}f} € ({val_eur*rate_usd:,.2f} $)"
-        return f"{val_eur:,.{decimales}f} €"
+            return f"{val_eur:,.{dec}f} € ({val_eur*rate_val:,.2f} $)"
+        return f"{val_eur:,.{dec}f} €"
 
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
+        
+        # TABLA RESUMEN (Agrupada)
         res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','GP_EUR':'sum', 'P_Act': 'first'}).reset_index()
         res['Rent. %'] = (res['GP_EUR'] / res['Coste'] * 100)
-        res['P_Act_Fmt'] = res.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
-        res['Ganancia_Fmt'] = res.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
+        res['P_Act_Fmt'] = res.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
+        res['Ganancia_Fmt'] = res.apply(lambda r: fmt_bi(r['GP_EUR'], r['Moneda']), axis=1)
+        
+        st.subheader(f"📊 Situación Actual ({titulo})")
+        cols_final = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']
         
         if filtro == "Fondo":
-            res_editable = res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act', 'Ganancia_Fmt', 'Rent. %']]
-            edited = st.data_editor(res_editable.style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True, disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'], key=f"editor_{filtro}")
+            st.warning("💡 **MODO EDICIÓN:** Haz doble clic en 'P_Act_Fmt' para actualizar el precio del banco.")
+            # Editor para fondos (mostrando P_Act para editar)
+            edited = st.data_editor(
+                res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act', 'Ganancia_Fmt', 'Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}),
+                use_container_width=True,
+                disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'],
+                key=f"ed_{filtro}"
+            )
             for i, row in edited.iterrows():
                 st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
-            st.dataframe(res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True)
+            st.dataframe(res[cols_final].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True)
+
+        # DESGLOSE HISTÓRICO (Recuperado)
+        st.subheader(f"📜 Detalle de Compras ({titulo})")
+        for nombre in df_sub['Nombre'].unique():
+            compras = df_sub[df_sub['Nombre'] == nombre].sort_values(by='Fecha', ascending=False).copy()
+            compras['P_Fmt'] = compras.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
+            compras['G_Fmt'] = compras.apply(lambda r: fmt_bi(r['GP_EUR'], r['Moneda']), axis=1)
+            with st.expander(f"Ver todas las compras de: {nombre}"):
+                st.table(compras[['Fecha','Cant','Coste','P_Fmt','G_Fmt','Rent. %']].style.applymap(resaltar_gp, subset=['G_Fmt']).format({"Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
+    st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 8. DIARIO DE OPERACIONES REALIZADAS (NUEVO) ---
+    # --- 8. DIARIO DE OPERACIONES REALIZADAS ---
     st.divider()
     st.header("📜 Diario de Operaciones Realizadas")
-    st.info("Lista de cierres de posición, ventas y movimientos ejecutados.")
-    df_cerradas = pd.DataFrame(cargar_operaciones_realizadas())
-    
-    st.table(df_cerradas.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Resultado']).format({"Invertido": "{:.2f} €", "Recuperado": "{:.2f} €", "Resultado": "{:.2f} €"}))
+    df_realizadas = pd.DataFrame(cargar_diario_operaciones())
+    st.table(df_realizadas.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Resultado']).format({"Invertido": "{:.2f} €", "Recuperado": "{:.2f} €", "Resultado": "{:.2f} €"}))
 
     st.divider()
     st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
