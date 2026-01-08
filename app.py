@@ -91,77 +91,77 @@ if check_password():
             except: return None
         return None
 
-    # --- 6. BARRA LATERAL (CON SINCRONIZACIÓN QUIRÚRGICA) ---
+    # --- 6. BARRA LATERAL ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
             success_count = 0
             fail_tickers = []
             try:
-                # Obtener tipo de cambio
                 exchange_data = yf.Ticker("EURUSD=X").history(period="1d")
                 rate = exchange_data["Close"].iloc[-1] if not exchange_data.empty else getattr(st.session_state, 'rate_aguirre', 1.09)
                 st.session_state.rate_aguirre = rate
-                
-                # Sincronizar acciones una a una
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         try:
-                            ticker_data = yf.Ticker(row['Ticker']).history(period="1d")
-                            if not ticker_data.empty:
-                                p_raw = ticker_data["Close"].iloc[-1]
+                            t_data = yf.Ticker(row['Ticker']).history(period="1d")
+                            if not t_data.empty:
+                                p_raw = t_data["Close"].iloc[-1]
                                 st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                                 success_count += 1
                             else: fail_tickers.append(row['Ticker'])
                         except: fail_tickers.append(row['Ticker'])
-                
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                if fail_tickers: st.warning(f"Actualizado con avisos en: {', '.join(set(fail_tickers))}")
-                else: st.success(f"Sincronizado: {success_count} acciones.")
+                if fail_tickers: st.warning(f"Error en: {', '.join(set(fail_tickers))}")
+                else: st.success(f"Actualizadas {success_count} acciones")
                 st.rerun()
-            except Exception as e: st.error(f"Error de red: {e}")
+            except Exception as e: st.error(f"Error: {e}")
         
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
             st.rerun()
 
-    # --- 7. PROCESAMIENTO DE DATOS ---
+    # --- 7. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df = st.session_state.df_cartera.copy()
-    df = df[df['Nombre'] != "JPM US Short Duration"] # Limpieza de cerrados
-    
+    df = df[df['Nombre'] != "JPM US Short Duration"]
     df['Valor Mercado'] = df['P_Act'] * df['Cant']
     df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
     df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
 
-    # --- 8. INTERFAZ: MÉTRICAS GLOBALES ---
+    # --- 8. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
     
-    # Cálculos globales
-    total_invertido = df['Coste'].sum()
-    total_mercado = df['Valor Mercado'].sum()
-    total_beneficio = total_mercado - total_invertido
-    rent_total = (total_beneficio / total_invertido * 100) if total_invertido > 0 else 0
+    t_inv = df['Coste'].sum()
+    t_val = df['Valor Mercado'].sum()
+    t_ben = t_val - t_inv
+    t_por = (t_ben / t_inv * 100) if t_inv > 0 else 0
 
-    # Fila de métricas principales
     m1, m2, m3 = st.columns(3)
-    m1.metric("Dinero Total Invertido", f"{total_invertido:,.2f} €")
-    m2.metric("Valor Actual de Cartera", f"{total_mercado:,.2f} €")
-    m3.metric("Beneficio TOTAL VIVO", f"{total_beneficio:,.2f} €", f"{rent_total:,.2f}%")
-    
+    m1.metric("Dinero Total Invertido", f"{t_inv:,.2f} €")
+    m2.metric("Valor Actual Cartera", f"{t_val:,.2f} €")
+    m3.metric("Beneficio TOTAL VIVO", f"{t_ben:,.2f} €", f"{t_por:,.2f}%")
     st.divider()
 
-    # Segunda fila de métricas (Por tipo)
-    c1, c2 = st.columns(2)
-    b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
-    b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
-    c1.metric("Beneficio Acum. Acciones", f"{b_acc:,.2f} €")
-    c2.metric("Beneficio Acum. Fondos", f"{b_fon:,.2f} €")
+    # --- 9. NUEVAS GRÁFICAS POR TIPO ---
+    st.header("📊 Análisis de Pesos por Activo")
+    g1, g2 = st.columns(2)
     
+    with g1:
+        df_acc_pie = df[df['Tipo'] == 'Acción'].groupby('Nombre')['Valor Mercado'].sum().reset_index()
+        if not df_acc_pie.empty:
+            st.plotly_chart(px.pie(df_acc_pie, values='Valor Mercado', names='Nombre', title="Porcentaje por Acción", hole=0.3), use_container_width=True)
+        else: st.info("No hay acciones en cartera.")
+
+    with g2:
+        df_fon_pie = df[df['Tipo'] == 'Fondo'].groupby('Nombre')['Valor Mercado'].sum().reset_index()
+        if not df_fon_pie.empty:
+            st.plotly_chart(px.pie(df_fon_pie, values='Valor Mercado', names='Nombre', title="Porcentaje por Fondo", hole=0.3), use_container_width=True)
+        else: st.info("No hay fondos en cartera.")
     st.divider()
 
-    # --- 9. SECCIONES DETALLADAS ---
+    # --- 10. TABLAS DETALLADAS ---
     def fmt_mon(v, mon, d=2):
         if mon == "USD": return f"{v:,.{d}f} € ({v*rt:,.2f} $)"
         return f"{v:,.{d}f} €"
@@ -169,49 +169,41 @@ if check_password():
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
-        
         res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
         res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
         res = res.rename(columns={'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido', 'P_Act': 'Precio Actual'})
-
-        st.subheader(f"📊 Resumen {titulo}")
         
         if filtro == "Fondo":
-            st.info("💡 Haz doble clic en 'Precio Actual' para actualizar el valor liquidativo.")
-            cols_fon = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            edited = st.data_editor(
-                res[cols_fon].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.4f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
-                use_container_width=True,
-                disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'],
-                key=f"ed_{filtro}"
-            )
+            st.info("💡 Doble clic en 'Precio Actual' para actualizar manualmente.")
+            cols = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
+            edited = st.data_editor(res[cols].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.4f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True, disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'], key=f"ed_{filtro}")
             for i, row in edited.iterrows():
                 st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
             res['Precio'] = res.apply(lambda r: fmt_mon(r['Precio Actual'], r['Moneda'], 4), axis=1)
-            cols_acc = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            st.dataframe(res[cols_acc].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
+            cols = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
+            st.dataframe(res[cols].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
 
-        st.subheader(f"📜 Detalle de Compras ({titulo})")
+        st.subheader(f"📜 Detalle de Historial ({titulo})")
         for n in df_sub['Nombre'].unique():
             com = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
             com['P_Fmt'] = com.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
             com['B_Fmt'] = com.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
-            with st.expander(f"Ver historial: {n}"):
+            with st.expander(f"Historial: {n}"):
                 st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 10. DIARIO HISTÓRICO ---
+    # --- 11. DIARIO HISTÓRICO ---
     st.divider()
     st.header("📜 Diario Histórico de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True)
 
-    # --- 11. GRÁFICA CIRCULAR ---
+    # --- 12. GRÁFICA GLOBAL ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
+    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución Global (Cartera Completa)", hole=0.4), use_container_width=True)
