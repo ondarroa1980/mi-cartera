@@ -4,17 +4,30 @@ import yfinance as yf
 import plotly.express as px
 from datetime import datetime, date
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILO ---
-st.set_page_config(page_title="Agirre & Uranga | Wealth Management", layout="wide", page_icon="🏦")
+# --- 1. CONFIGURACIÓN Y ESTÉTICA ---
+st.set_page_config(page_title="Wealth Management | Agirre & Uranga", layout="wide", page_icon="🏦")
 
-# CSS personalizado para mejorar la estética
+# Inyección de CSS para mejorar la estética
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
-    .broker-badge { padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px; }
-    .myinvestor { background-color: #e3f2fd; color: #1976d2; }
-    .renta4 { background-color: #fff3e0; color: #e65100; }
+    .main { background-color: #f9f9fb; }
+    .stMetric { 
+        background-color: #ffffff; 
+        padding: 20px; 
+        border-radius: 12px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-left: 5px solid #2e7d32;
+    }
+    div[data-testid="stMetricValue"] { font-size: 1.8rem; font-weight: 700; color: #1e293b; }
+    .broker-label {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .myinvestor { background-color: #dbeafe; color: #1e40af; }
+    .renta4 { background-color: #fef3c7; color: #92400e; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -33,23 +46,16 @@ def check_password():
     return True
 
 if check_password():
-
-    # --- 3. LÓGICA DE IMPUESTOS Y ESTILOS ---
-    def calcular_neto(row):
-        """Calcula el beneficio neto tras el 19% de IRPF sobre plusvalías."""
-        bruto = row['Beneficio']
-        if bruto > 0:
-            return bruto * 0.81  # Retención del 19%
-        return bruto # Las pérdidas no se gravan
-
+    
+    # --- 3. FUNCIONES DE APOYO ---
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
                 clean_val = val.split(' ')[0].replace(',', '')
                 num = float(clean_val)
             else: num = val
-            if num > 0: return 'color: #2e7d32; background-color: #e8f5e9; font-weight: bold;'
-            if num < 0: return 'color: #c62828; background-color: #ffebee; font-weight: bold;'
+            if num > 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
+            if num < 0: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
         return None
 
@@ -58,106 +64,164 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_eur * tasa:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 4. BASES DE DATOS (Mantenemos tus datos originales) ---
+    # --- 4. BASES DE DATOS (Originales) ---
     def cargar_datos_maestros():
         return [
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
             {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR"},
+            {"Fecha": "2025-10-09", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1290.0, "Coste": 1018.05, "P_Act": 0.718, "Moneda": "EUR"},
             {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 266.83, "Moneda": "USD"},
+            {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 29.50, "Moneda": "USD"},
             {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86, "Moneda": "EUR"},
+            {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22, "Moneda": "EUR"},
+            {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22, "Moneda": "EUR"},
             {"Fecha": "2025-02-05", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 203.1068, "Coste": 5000.00, "P_Act": 25.9368, "Moneda": "EUR"},
-            {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"}
+            {"Fecha": "2025-03-04", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 21.8300, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+            {"Fecha": "2025-04-10", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 25.2488, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+            {"Fecha": "2025-09-02", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 41.5863, "Coste": 1000.00, "P_Act": 25.9368, "Moneda": "EUR"},
+            {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
+            {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+            {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
+            {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # Gestión de archivos (CSV)
+    # (Funciones cargar_diario_operaciones y cargar_datos_aportaciones se mantienen igual)
+    def cargar_diario_operaciones():
+        return [
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Compra inicial", "Importe": 63822.16, "Detalle": "Entrada fondo monetario"},
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada"},
+            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Compra inicial", "Importe": 7000.00, "Detalle": "Entrada deuda nórdica"},
+            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "Ampliación", "Importe": 3000.00, "Detalle": "Incremento posición"},
+            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Compra inicial", "Importe": 9999.96, "Detalle": "Entrada posición"},
+            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "Compra inicial", "Importe": 5000.00, "Detalle": "Entrada fondo"},
+            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
+            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "Compra", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
+            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 1000.00, "Detalle": "Incremento capital"},
+            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "Compra", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
+            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "Compra inicial", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
+            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 451.82, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "Ampliación", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
+            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
+            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
+        ]
+
+    def cargar_datos_aportaciones():
+        return [
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 44000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 10, 4), "Importe": 600.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 1, 8), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 4, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 4, 30), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 8, 14), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 21), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 12, 31), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 30000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 11, 21), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 1, 22), "Importe": 5000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
+        ]
+
+    # --- 5. GESTIÓN DE ARCHIVOS ---
     ARCHIVO_CSV = "cartera_final_aguirre_uranga.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except: st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
 
-    # --- 5. BARRA LATERAL CON LOGOS ---
+    # --- 6. BARRA LATERAL (Sincronización Acciones + Fondos) ---
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135706.png", width=100) # Logo genérico gestión
-        st.header("⚙️ Operaciones")
-        
-        if st.button("🔄 Sincronizar (Acciones y Fondos)"):
-            with st.spinner("Actualizando cotizaciones..."):
+        st.header("📊 Gestión de Activos")
+        if st.button("🔄 Sincronizar Cotizaciones"):
+            with st.spinner("Conectando con Yahoo Finance..."):
                 try:
-                    # Tasa de cambio
                     rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
                     st.session_state.rate_aguirre = rate
-                    
                     for i, row in st.session_state.df_cartera.iterrows():
-                        # yf.Ticker funciona con la mayoría de ISINs y Tickers de Yahoo
+                        # Sincroniza TODO (Acciones y Fondos por ISIN/Ticker)
                         t_data = yf.Ticker(row['Ticker']).history(period="1d")
                         if not t_data.empty:
                             p_raw = t_data["Close"].iloc[-1]
-                            # Ajuste si es moneda extranjera
                             st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
-                    
                     st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                    st.success("Sincronización completa")
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                except: st.error("Error al conectar con los mercados.")
 
-    # --- 6. PROCESAMIENTO DE DATOS ---
+    # --- 7. PROCESAMIENTO Y CÁLCULO FISCAL ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
+    df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
     
-    # Cálculos Financieros
     df_v['Valor Mercado'] = df_v['P_Act'] * df_v['Cant']
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
-    df_v['Beneficio Neto'] = df_v.apply(calcular_neto, axis=1)
-    df_v['Rent %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
+    # Cálculo Hacienda: 19% solo si hay beneficio
+    df_v['Beneficio Neto'] = df_v['Beneficio'].apply(lambda x: x * 0.81 if x > 0 else x)
+    df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
-    # --- 7. DASHBOARD SUPERIOR ---
-    st.title("💰 Wealth Management Agirre & Uranga")
+    # --- 8. DASHBOARD SUPERIOR ---
+    st.title("🏦 Cartera Agirre & Uranga")
     
     inv_total = df_v['Coste'].sum()
     val_total = df_v['Valor Mercado'].sum()
-    ben_bruto = val_total - inv_total
-    ben_neto = df_v['Beneficio Neto'].sum()
+    ben_total = val_total - inv_total
+    ben_neto_total = df_v['Beneficio Neto'].sum()
     
-    # Tarjetas de métricas estilizadas
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Capital Invertido", f"{inv_total:,.2f} €")
-    c2.metric("Valor de Mercado", f"{val_total:,.2f} €")
-    c3.metric("Beneficio Bruto", f"{ben_bruto:,.2f} €", f"{(ben_bruto/inv_total*100):.2f}%")
-    c4.metric("Beneficio Neto (IRPF)", f"{ben_neto:,.2f} €", help="Tras aplicar 19% de impuestos sobre ganancias")
-
+    c1.metric("Dinero Invertido", f"{inv_total:,.2f} €")
+    c2.metric("Valor Actual", f"{val_total:,.2f} €")
+    c3.metric("Beneficio Bruto", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100):.2f}%")
+    c4.metric("Beneficio Neto (19%)", f"{ben_neto_total:,.2f} €", help="Después de impuestos (Hacienda)")
     st.divider()
 
-    # --- 8. TABLAS DETALLADAS ---
+    # --- 9. TABLAS DE POSICIONES ---
     def mostrar_seccion(tit, tipo_filtro):
-        st.subheader(tit)
+        st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregación para visualización
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({
             'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 
             'Beneficio':'sum', 'Beneficio Neto': 'sum'
         }).reset_index()
         
-        res['Rent %'] = (res['Beneficio'] / res['Coste'] * 100)
+        res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         res['Precio'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-        res['Ganancia €'] = res['Beneficio'].map("{:,.2f} €".format)
+        res['Ganancia (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         res['Ganancia Neta (19%)'] = res['Beneficio Neto'].map("{:,.2f} €".format)
 
         st.dataframe(
-            res[['Broker', 'Nombre', 'Coste', 'Valor Mercado', 'Precio', 'Ganancia €', 'Ganancia Neta (19%)', 'Rent %']]
-            .style.applymap(resaltar_beneficio, subset=['Ganancia €', 'Ganancia Neta (19%)', 'Rent %'])
-            .format({"Coste":"{:.2f} €","Valor Mercado":"{:.2f} €","Rent %":"{:.2f}%"}),
+            res[['Broker', 'Nombre', 'Coste', 'Valor Mercado', 'Precio', 'Ganancia (€/$)', 'Ganancia Neta (19%)', 'Rentabilidad %']]
+            .style.applymap(resaltar_beneficio, subset=['Ganancia (€/$)', 'Ganancia Neta (19%)', 'Rentabilidad %'])
+            .format({"Coste":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
             use_container_width=True, hide_index=True
         )
 
-    mostrar_seccion("📈 Cartera de Acciones", "Acción")
-    mostrar_seccion("펀 Fondos de Inversión", "Fondo")
-
-    # --- 9. GRÁFICO DE DISTRIBUCIÓN ---
+    mostrar_seccion("Acciones", "Acción")
+    mostrar_seccion("Fondos de Inversión", "Fondo")
+    
+    # --- 12. GRÁFICAS ---
     st.divider()
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
+    st.header("📊 Análisis Visual")
+    g1, g2 = st.columns(2)
+    with g1:
         st.plotly_chart(px.pie(df_v, values='Valor Mercado', names='Broker', title="Distribución por Broker", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel), use_container_width=True)
-    with col_chart2:
-        st.plotly_chart(px.bar(df_v, x='Nombre', y='Beneficio Neto', title="Beneficio Neto por Activo", color='Beneficio Neto', color_continuous_scale='RdYlGn'), use_container_width=True)
+    with g2:
+        st.plotly_chart(px.bar(df_v.groupby('Nombre')['Beneficio Neto'].sum().reset_index(), x='Nombre', y='Beneficio Neto', title="Beneficio Neto por Activo", color='Beneficio Neto', color_continuous_scale='RdYlGn'), use_container_width=True)
