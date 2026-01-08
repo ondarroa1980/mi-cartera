@@ -71,8 +71,7 @@ if check_password():
 
     # --- 5. BASES DE DATOS ---
     def cargar_datos_maestros():
-        # Añadimos campo Ult_Val con valor inicial
-        f_ini = "---"
+        f_ini = "08/01/2026 11:30"
         return [
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR", "Ult_Val": f_ini},
             {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR", "Ult_Val": f_ini},
@@ -153,10 +152,10 @@ if check_password():
     ARCHIVO_AP = "aportaciones_familiares.csv"
 
     if 'df_cartera' not in st.session_state:
-        try:
+        try: 
             st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
             if 'Ult_Val' not in st.session_state.df_cartera.columns:
-                st.session_state.df_cartera['Ult_Val'] = "---"
+                st.session_state.df_cartera['Ult_Val'] = "08/01/2026 11:30"
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
@@ -228,21 +227,55 @@ if check_password():
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregamos Ult_Val a la agregación
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val':'first'}).reset_index()
+        # Agregamos Ult_Val a la agrupación
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val': 'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
-        res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-        res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         
-        res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
-
-        with st.container(border=True):
-            st.dataframe(
-                res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %', 'Última Val.']]
-                .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
-                .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
-                use_container_width=True, hide_index=True
-            )
+        if tipo_filtro == "Acción":
+            res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+            res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+            res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
+            with st.container(border=True):
+                st.dataframe(
+                    res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %', 'Última Val.']]
+                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
+                    .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                    use_container_width=True, hide_index=True
+                )
+        else:
+            # PARA FONDOS: HACER EL PRECIO EDITABLE
+            # No formateamos con fmt_dual para permitir la edición numérica
+            res_edit = res.copy()
+            res_edit['Beneficio (€)'] = res_edit['Beneficio']
+            res_edit = res_edit.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'P_Act': 'Precio Actual', 'Ult_Val': 'Última Val.'})
+            
+            with st.container(border=True):
+                edited_df = st.data_editor(
+                    res_edit[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€)', 'Rentabilidad %', 'Última Val.']],
+                    column_config={
+                        "Precio Actual": st.column_config.NumberColumn("Precio Actual", format="%.4f"),
+                        "Broker": st.column_config.Column(disabled=True),
+                        "Nombre": st.column_config.Column(disabled=True),
+                        "Cant/Part.": st.column_config.Column(disabled=True),
+                        "Inversión": st.column_config.Column(disabled=True),
+                        "Valor (€)": st.column_config.Column(disabled=True),
+                        "Beneficio (€)": st.column_config.Column(disabled=True),
+                        "Rentabilidad %": st.column_config.Column(disabled=True),
+                        "Última Val.": st.column_config.Column(disabled=True),
+                    },
+                    use_container_width=True, hide_index=True, key=f"editor_{tipo_filtro}"
+                )
+                
+                # Detectar cambios y actualizar base de datos
+                if not edited_df['Precio Actual'].equals(res_edit['Precio Actual']):
+                    ahora = datetime.now().strftime("%d/%m/%Y %H:%M")
+                    for idx, row in edited_df.iterrows():
+                        nombre_activo = row['Nombre']
+                        nuevo_precio = row['Precio Actual']
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_activo, 'P_Act'] = nuevo_precio
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_activo, 'Ult_Val'] = ahora
+                    st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                    st.rerun()
 
         with st.expander(f"Ver desglose de compras: {tit}"):
             for n in sub['Nombre'].unique():
