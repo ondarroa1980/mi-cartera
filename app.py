@@ -25,9 +25,21 @@ if check_password():
     
     # --- 3. FUNCIONES DE APOYO (ESTILOS Y MONEDA) ---
     def resaltar_beneficio(val):
-        if isinstance(val, (int, float)):
-            if val > 0: return 'background-color: #d4edda' # Verde
-            if val < 0: return 'background-color: #f8d7da' # Rojo
+        """Aplica color verde o rojo basándose en el valor numérico o texto con moneda."""
+        try:
+            if isinstance(val, str):
+                # Extrae el número del string (ej: "1,234.56 € (1,340.00 $)" -> 1234.56)
+                clean_val = val.split(' ')[0].replace(',', '')
+                num = float(clean_val)
+            elif isinstance(val, (int, float)):
+                num = val
+            else:
+                return None
+            
+            if num > 0: return 'background-color: #d4edda' # Verde
+            if num < 0: return 'background-color: #f8d7da' # Rojo
+        except:
+            pass
         return None
 
     def fmt_dual(valor_eur, moneda, tasa, decimales=2):
@@ -163,8 +175,6 @@ if check_password():
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
     df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
-    
-    # Nombres humanos para las columnas internas de cálculo
     df_v['Valor Mercado'] = df_v['P_Act'] * df_v['Cant']
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
@@ -187,13 +197,12 @@ if check_password():
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregado para la tabla principal con nombres humanos
+        # Agregado para la tabla principal
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         
-        # Renombrar columnas para la visualización final
         res_display = res.rename(columns={
             'Cant': 'Cantidad / Part.',
             'Coste': 'Inversión Total',
@@ -202,7 +211,7 @@ if check_password():
 
         st.dataframe(
             res_display[['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %']]
-            .style.applymap(resaltar_beneficio, subset=['Rentabilidad %'])
+            .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
             .format({"Cantidad / Part.":"{:.4f}","Inversión Total":"{:.2f} €","Valor Actual (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
             use_container_width=True
         )
@@ -210,8 +219,8 @@ if check_password():
         for n in sub['Nombre'].unique():
             with st.expander(f"Detalle de compras: {n}"):
                 det = sub[sub['Nombre'] == n].copy()
-                det['Precio Visual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-                det['Beneficio Visual'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+                det['Precio Actual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+                det['Beneficio (€/$)'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
                 
                 det_display = det.rename(columns={
                     'Cant': 'Cantidad',
@@ -220,8 +229,8 @@ if check_password():
                 })
 
                 st.dataframe(
-                    det_display[['Fecha', 'Cantidad', 'Inversión', 'Precio Visual', 'Valor Mercado (€)', 'Beneficio Visual', 'Rentabilidad %']]
-                    .style.applymap(resaltar_beneficio, subset=['Rentabilidad %'])
+                    det_display[['Fecha', 'Cantidad', 'Inversión', 'Precio Actual', 'Valor Mercado (€)', 'Beneficio (€/$)', 'Rentabilidad %']]
+                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
                     .format({"Cantidad":"{:.4f}","Inversión":"{:.2f} €","Valor Mercado (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
                     use_container_width=True, hide_index=True
                 )
