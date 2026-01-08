@@ -23,15 +23,14 @@ def check_password():
 
 if check_password():
     
-    # --- 3. FUNCIONES DE ESTILO Y FORMATEO ---
+    # --- 3. FUNCIONES DE APOYO (ESTILOS Y MONEDA) ---
     def resaltar_beneficio(val):
         if isinstance(val, (int, float)):
-            if val > 0: return 'background-color: #d4edda' # Verde para ganancias
-            if val < 0: return 'background-color: #f8d7da' # Rojo para pérdidas
+            if val > 0: return 'background-color: #d4edda' # Verde
+            if val < 0: return 'background-color: #f8d7da' # Rojo
         return None
 
     def fmt_dual(valor_eur, moneda, tasa, decimales=2):
-        """Formatea un valor para mostrar EUR y USD si corresponde."""
         if moneda == "USD":
             valor_usd = valor_eur * tasa
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
@@ -121,8 +120,6 @@ if check_password():
                         t_data = yf.Ticker(row['Ticker']).history(period="1d")
                         if not t_data.empty:
                             p_raw = t_data["Close"].iloc[-1]
-                            # El precio de Yahoo siempre viene en la moneda del ticker. 
-                            # Si es USD, lo convertimos a EUR dividiendo por la tasa.
                             st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.rerun()
@@ -137,7 +134,7 @@ if check_password():
             st.rerun()
 
     # --- 7. PROCESAMIENTO ---
-    rt = getattr(st.session_state, 'rate_aguirre', 1.085) # Tasa por defecto
+    rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
     df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
     df_v['Val_Eur'] = df_v['P_Act'] * df_v['Cant']
@@ -157,46 +154,33 @@ if check_password():
     c3.metric("Beneficio TOTAL VIVO", f"{t_ben:,.2f} €", f"{(t_ben/t_inv*100):.2f}%")
     st.divider()
 
-    # --- 9. GRÁFICAS DE PESOS ---
-    g1, g2 = st.columns(2)
-    with g1: st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Val_Eur', names='Nombre', title="Pesos Acciones", hole=0.3), use_container_width=True)
-    with g2: st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Val_Eur', names='Nombre', title="Pesos Fondos", hole=0.3), use_container_width=True)
-    st.divider()
-
-    # --- 10. TABLAS DE ACTIVOS ---
+    # --- 9. TABLAS DE POSICIONES ---
     def mostrar_seccion(tit, tipo_filtro):
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregado para la tabla principal
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Val_Eur':'sum','P_Act':'first', 'Ben_Eur':'sum'}).reset_index()
         res['Rent_Pct'] = (res['Ben_Eur'] / res['Coste'] * 100)
-        
-        # Columnas de visualización dual
         res['Precio'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio'] = res.apply(lambda x: fmt_dual(x['Ben_Eur'], x['Moneda'], rt), axis=1)
         
-        # Formateo de tabla principal
-        cols = ['Broker', 'Nombre', 'Cant', 'Coste', 'Val_Eur', 'Precio', 'Beneficio', 'Rent_Pct']
         st.dataframe(
-            res[cols].style.applymap(resaltar_beneficio, subset=['Rent_Pct'])
+            res[['Broker', 'Nombre', 'Cant', 'Coste', 'Val_Eur', 'Precio', 'Beneficio', 'Rent_Pct']]
+            .style.applymap(resaltar_beneficio, subset=['Rent_Pct'])
             .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Val_Eur":"{:.2f} €","Rent_Pct":"{:.2f}%"}),
             use_container_width=True
         )
 
-        # Desglose de cada compra
         for n in sub['Nombre'].unique():
-            with st.expander(f"Historial detallado: {n}"):
-                compras = sub[sub['Nombre'] == n].copy()
-                compras['Precio_Act'] = compras.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-                compras['Ben_Visual'] = compras.apply(lambda x: fmt_dual(x['Ben_Eur'], x['Moneda'], rt), axis=1)
-                
-                det = compras[['Fecha', 'Cant', 'Coste', 'Precio_Act', 'Val_Eur', 'Ben_Eur', 'Ben_Visual', 'Rent_Pct']]
+            with st.expander(f"Detalle de compras: {n}"):
+                det = sub[sub['Nombre'] == n].copy()
+                det['P_Visual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+                det['B_Visual'] = det.apply(lambda x: fmt_dual(x['Ben_Eur'], x['Moneda'], rt), axis=1)
                 st.dataframe(
-                    det.style.applymap(resaltar_beneficio, subset=['Ben_Eur'])
+                    det[['Fecha', 'Cant', 'Coste', 'P_Visual', 'Val_Eur', 'B_Visual', 'Rent_Pct']]
+                    .style.applymap(resaltar_beneficio, subset=['Rent_Pct'])
                     .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Val_Eur":"{:.2f} €","Rent_Pct":"{:.2f}%"}),
-                    use_container_width=True,
-                    hide_index=True
+                    use_container_width=True, hide_index=True
                 )
 
     mostrar_seccion("Acciones", "Acción")
@@ -204,7 +188,7 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo")
     st.divider()
 
-    # --- 11. APORTACIONES FAMILIARES (AL FINAL) ---
+    # --- 10. APORTACIONES FAMILIARES ---
     st.header("📑 Aportaciones Familiares (R4 + MyInvestor)")
     df_ap = st.session_state.df_aportaciones.copy()
     df_ap['Fecha'] = pd.to_datetime(df_ap['Fecha']).dt.date
@@ -235,9 +219,18 @@ if check_password():
         st.success("Aportaciones guardadas!")
         st.rerun()
 
-    total_fam = total_a + total_x
-    st.markdown(f"""
-    <div style='text-align: center; background: #ffeb3b; padding: 15px; border-radius: 10px; color: black; font-size: 22px; font-weight: bold;'>
-        SUMA TOTAL APORTADO: {total_fam:,.2f} €
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: center; background: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 20px; font-weight: bold;'>SUMA TOTAL APORTADO: {total_a + total_x:,.2f} €</div>", unsafe_allow_html=True)
+    st.divider()
+
+    # --- 11. GRÁFICAS (AL FINAL) ---
+    st.header("📊 Análisis Visual de la Cartera")
+    
+    # Gráfica Global (La que se recupera)
+    st.plotly_chart(px.pie(df_v, values='Val_Eur', names='Nombre', title="Distribución Global de Activos (Toda la Cartera)", hole=0.4), use_container_width=True)
+    
+    # Gráficas por tipo
+    g1, g2 = st.columns(2)
+    with g1:
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Val_Eur', names='Nombre', title="Pesos en Acciones", hole=0.3), use_container_width=True)
+    with g2:
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Val_Eur', names='Nombre', title="Pesos en Fondos", hole=0.3), use_container_width=True)
