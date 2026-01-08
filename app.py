@@ -3,6 +3,8 @@ import pandas as pd
 import yfinance as yf
 import plotly.express as px
 from datetime import datetime, date
+# --- NUEVA IMPORTACIÓN NECESARIA PARA EL PDF ---
+from fpdf import FPDF
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide", page_icon="📈")
@@ -23,7 +25,7 @@ def check_password():
 
 if check_password():
     
-    # --- 3. FUNCIONES DE APOYO (ESTILOS Y MONEDA) ---
+    # --- 3. FUNCIONES DE APOYO (ESTILOS, MONEDA Y PDF) ---
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
@@ -42,6 +44,47 @@ if check_password():
             valor_usd = valor_eur * tasa
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
+
+    # --- NUEVA FUNCIÓN PARA GENERAR EL PDF ---
+    def generar_resumen_pdf(inv_total, val_total, ben_total, total_a, total_x):
+        pdf = FPDF()
+        pdf.add_page()
+        # Usamos Helvetica que es estándar y acepta caracteres básicos
+        pdf.set_font("Helvetica", 'B', 16)
+        pdf.cell(0, 10, f"Resumen Cartera Agirre & Uranga", ln=True, align='C')
+        pdf.set_font("Helvetica", '', 10)
+        pdf.cell(0, 10, f"Fecha del informe: {date.today().strftime('%d/%m/%Y')}", ln=True, align='C')
+        pdf.ln(20)
+
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.set_fill_color(200, 220, 255)
+        pdf.cell(0, 10, "  Estado Actual de la Cartera (Activos Vivos)", ln=True, fill=True)
+        pdf.ln(5)
+        
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(0, 10, f"Dinero Total Invertido:   {inv_total:,.2f} EUR", ln=True)
+        pdf.cell(0, 10, f"Valor Actual de Mercado:  {val_total:,.2f} EUR", ln=True)
+        
+        pdf.set_font("Helvetica", 'B', 12)
+        color_ben = (0, 150, 0) if ben_total > 0 else (200, 0, 0)
+        pdf.set_text_color(*color_ben)
+        pdf.cell(0, 10, f"Beneficio Total Acumulado: {ben_total:,.2f} EUR", ln=True)
+        pdf.set_text_color(0, 0, 0) # Reset color
+        pdf.ln(20)
+
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.set_fill_color(255, 255, 200)
+        pdf.cell(0, 10, "  Resumen de Aportaciones", ln=True, fill=True)
+        pdf.ln(5)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(0, 10, f"Total aportado por Ander: {total_a:,.2f} EUR", ln=True)
+        pdf.cell(0, 10, f"Total aportado por Xabat: {total_x:,.2f} EUR", ln=True)
+        pdf.ln(5)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 10, f"GRAN TOTAL APORTADO:      {(total_a + total_x):,.2f} EUR", ln=True)
+
+        # Devuelve los bytes del PDF codificados en latin-1 para compatibilidad
+        return pdf.output(dest='S').encode('latin-1', 'ignore')
 
     # --- 4. BASES DE DATOS ---
     def cargar_datos_maestros():
@@ -94,8 +137,30 @@ if check_password():
         return [
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 44000.0},
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 10, 4), "Importe": 600.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 1, 8), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 4, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 4, 30), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 8, 14), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 21), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 12, 31), "Importe": 500.0},
             {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 30000.0},
-            # ... Resto de datos omitidos por brevedad pero cargados en la sesión ...
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 11, 21), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 1, 22), "Importe": 5000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
         ]
 
     # --- 5. GESTIÓN DE ARCHIVOS ---
@@ -139,6 +204,9 @@ if check_password():
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            temp_ap = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones = temp_ap
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
             st.rerun()
 
     # --- 7. PROCESAMIENTO ---
@@ -166,12 +234,10 @@ if check_password():
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregado para resumen humano
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         
-        # Formateo de columnas para visualización
-        res['Precio Actual'] = res['P_Act'] # Mantenemos numérico para el editor si es Fondo
+        res['Precio Actual'] = res['P_Act']
         res['Precio Visual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         
@@ -179,7 +245,6 @@ if check_password():
 
         if tipo_filtro == "Fondo":
             st.info("💡 **MODO EDICIÓN:** Cambia el 'Precio Actual' y pulsa fuera de la celda. Luego dale al botón 'Guardar Precios de Fondos'.")
-            # El editor solo permite cambiar 'Precio Actual'
             columnas_fondo = ['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %']
             df_editado = st.data_editor(
                 res_display[columnas_fondo].style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
@@ -193,14 +258,11 @@ if check_password():
                 for index, row in df_editado.iterrows():
                     nombre_fondo = row['Nombre']
                     nuevo_precio = row['Precio Actual']
-                    # Actualizamos en el DataFrame maestro de la sesión
                     st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_fondo, 'P_Act'] = nuevo_precio
-                
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.success("Precios actualizados y cartera recalculada.")
                 st.rerun()
         else:
-            # Acciones (Estático)
             columnas_accion = ['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Visual', 'Beneficio (€/$)', 'Rentabilidad %']
             st.dataframe(
                 res_display[columnas_accion].style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
@@ -208,7 +270,6 @@ if check_password():
                 use_container_width=True
             )
 
-        # Expanders detallados
         for n in sub['Nombre'].unique():
             with st.expander(f"Detalle de compras: {n}"):
                 det = sub[sub['Nombre'] == n].copy()
@@ -241,12 +302,14 @@ if check_password():
         st.subheader("👨‍💼 ANDER")
         d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True)
-        st.info(f"**TOTAL ANDER: {e_a['Importe'].sum():,.2f} €**")
+        total_a = e_a['Importe'].sum()
+        st.info(f"**TOTAL ANDER: {total_a:,.2f} €**")
     with col_x:
         st.subheader("👨‍💼 XABAT")
         d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True)
-        st.info(f"**TOTAL XABAT: {e_x['Importe'].sum():,.2f} €**")
+        total_x = e_x['Importe'].sum()
+        st.info(f"**TOTAL XABAT: {total_x:,.2f} €**")
     
     if st.button("💾 Guardar Aportaciones"):
         e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
@@ -255,7 +318,7 @@ if check_password():
         st.success("Aportaciones guardadas!")
         st.rerun()
 
-    st.markdown(f"<div style='text-align: center; background: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 20px; font-weight: bold;'>SUMA TOTAL APORTADO: {e_a['Importe'].sum() + e_x['Importe'].sum():,.2f} €</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: center; background: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 20px; font-weight: bold;'>SUMA TOTAL APORTADO: {total_a + total_x:,.2f} €</div>", unsafe_allow_html=True)
     st.divider()
 
     # --- 12. GRÁFICAS (AL FINAL) ---
@@ -264,3 +327,16 @@ if check_password():
     g1, g2 = st.columns(2)
     with g1: st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos Acciones", hole=0.3), use_container_width=True)
     with g2: st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos Fondos", hole=0.3), use_container_width=True)
+
+    # --- 13. BOTÓN DE DESCARGA PDF (BARRA LATERAL) ---
+    with st.sidebar:
+        st.divider()
+        st.header("🖨️ Informes")
+        # Generamos el PDF en memoria usando los datos actuales
+        pdf_bytes = generar_resumen_pdf(inv_total, val_total, ben_total, total_a, total_x)
+        st.download_button(
+            label="📄 Descargar Resumen PDF",
+            data=pdf_bytes,
+            file_name=f"Resumen_Cartera_{date.today()}.pdf",
+            mime="application/pdf"
+        )
