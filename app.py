@@ -4,31 +4,8 @@ import yfinance as yf
 import plotly.express as px
 from datetime import datetime, date
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILO ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide", page_icon="📈")
-
-# Estilo CSS para mejorar la interfaz (Logos, colores y tarjetas)
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric {
-        background-color: #ffffff;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #edf2f7;
-    }
-    .broker-badge {
-        padding: 2px 8px;
-        border-radius: 5px;
-        font-size: 11px;
-        font-weight: bold;
-        color: white;
-    }
-    .myinvestor-bg { background-color: #0046ff; }
-    .renta4-bg { background-color: #ff4b4b; }
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- 2. SISTEMA DE SEGURIDAD ---
 def check_password():
@@ -46,16 +23,23 @@ def check_password():
 
 if check_password():
     
-    # --- 3. FUNCIONES DE APOYO ---
+    # --- 3. FUNCIONES DE APOYO (ESTILOS Y MONEDA) ---
     def resaltar_beneficio(val):
+        """Aplica color verde o rojo basándose en el valor numérico o texto con moneda."""
         try:
             if isinstance(val, str):
+                # Extrae el número del string (ej: "1,234.56 € (1,340.00 $)" -> 1234.56)
                 clean_val = val.split(' ')[0].replace(',', '')
                 num = float(clean_val)
-            else: num = val
-            if num > 0: return 'background-color: #d4edda; color: #155724;' # Verde
-            if num < 0: return 'background-color: #f8d7da; color: #721c24;' # Rojo
-        except: pass
+            elif isinstance(val, (int, float)):
+                num = val
+            else:
+                return None
+            
+            if num > 0: return 'background-color: #d4edda' # Verde
+            if num < 0: return 'background-color: #f8d7da' # Rojo
+        except:
+            pass
         return None
 
     def fmt_dual(valor_eur, moneda, tasa, decimales=2):
@@ -64,7 +48,7 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 4. BASES DE DATOS (Mantenemos tus datos originales) ---
+    # --- 4. BASES DE DATOS ---
     def cargar_datos_maestros():
         return [
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
@@ -161,48 +145,40 @@ if check_password():
             st.session_state.df_aportaciones = temp_ap
             st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
 
-    # --- 6. BARRA LATERAL (CON API DE FONDOS Y ACCIONES) ---
+    # --- 6. BARRA LATERAL ---
     with st.sidebar:
-        st.header("📊 Gestión de Cartera")
-        if st.button("🔄 Sincronizar Todo (Acciones + Fondos)"):
-            with st.spinner("Actualizando cotizaciones..."):
-                try:
-                    # Tasa de cambio EUR/USD
-                    rate_data = yf.Ticker("EURUSD=X").history(period="1d")
-                    rate = rate_data["Close"].iloc[-1] if not rate_data.empty else 1.09
-                    st.session_state.rate_aguirre = rate
-                    
-                    for i, row in st.session_state.df_cartera.iterrows():
-                        # Sincronizamos usando el Ticker (que puede ser ISIN para fondos en Yahoo)
-                        ticker_obj = yf.Ticker(row['Ticker'])
-                        t_data = ticker_obj.history(period="1d")
-                        
+        st.header("⚙️ Gestión")
+        if st.button("🔄 Sincronizar Bolsa"):
+            try:
+                rate_data = yf.Ticker("EURUSD=X").history(period="1d")
+                rate = rate_data["Close"].iloc[-1] if not rate_data.empty else 1.09
+                st.session_state.rate_aguirre = rate
+                for i, row in st.session_state.df_cartera.iterrows():
+                    if row['Tipo'] == "Acción":
+                        t_data = yf.Ticker(row['Ticker']).history(period="1d")
                         if not t_data.empty:
                             p_raw = t_data["Close"].iloc[-1]
-                            # Ajuste de moneda si es USD
                             st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
-                    
-                    st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                    st.success("Sincronización completada.")
-                    st.rerun()
-                except: st.error("Error al sincronizar datos.")
+                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                st.rerun()
+            except: st.error("Error al sincronizar.")
         
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            temp_ap = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones = temp_ap
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
             st.rerun()
 
-    # --- 7. PROCESAMIENTO Y CÁLCULO DE IMPUESTOS ---
+    # --- 7. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
     df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
     
+    # Nombres humanos para las columnas internas de cálculo
     df_v['Valor Mercado'] = df_v['P_Act'] * df_v['Cant']
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
-    
-    # --- CAMBIO: CÁLCULO HACIENDA 19% ---
-    # Si hay beneficio, restamos el 19%. Si hay pérdida, se queda igual.
-    df_v['Beneficio Neto'] = df_v['Beneficio'].apply(lambda x: x * 0.81 if x > 0 else x)
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
     # --- 8. DASHBOARD SUPERIOR ---
@@ -211,13 +187,11 @@ if check_password():
     inv_total = df_v['Coste'].sum()
     val_total = df_v['Valor Mercado'].sum()
     ben_total = val_total - inv_total
-    ben_neto_total = df_v['Beneficio Neto'].sum()
     
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Dinero Invertido", f"{inv_total:,.2f} €")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Dinero Invertido (Vivos)", f"{inv_total:,.2f} €")
     c2.metric("Valor Actual Cartera", f"{val_total:,.2f} €")
-    c3.metric("Beneficio Bruto", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%")
-    c4.metric("Beneficio Neto (19%)", f"{ben_neto_total:,.2f} €", help="Cálculo tras aplicar el 19% de impuestos a las ganancias.")
+    c3.metric("Beneficio TOTAL VIVO", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%")
     st.divider()
 
     # --- 9. TABLAS DE POSICIONES ---
@@ -225,21 +199,44 @@ if check_password():
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Beneficio Neto': 'sum'}).reset_index()
+        # Agregado para la tabla principal con nombres humanos
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
-        res['Neto (Hacienda)'] = res['Beneficio Neto'].map("{:,.2f} €".format)
         
-        # Renombrar columnas para visualización
-        res_display = res.rename(columns={'Cant': 'Cant.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)'})
+        # Renombrar columnas para la visualización final
+        res_display = res.rename(columns={
+            'Cant': 'Cantidad / Part.',
+            'Coste': 'Inversión Total',
+            'Valor Mercado': 'Valor Actual (€)'
+        })
 
         st.dataframe(
-            res_display[['Broker', 'Nombre', 'Cant.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Neto (Hacienda)', 'Rentabilidad %']]
-            .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Neto (Hacienda)', 'Rentabilidad %'])
-            .format({"Cant.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
-            use_container_width=True, hide_index=True
+            res_display[['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %']]
+            .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
+            .format({"Cantidad / Part.":"{:.4f}","Inversión Total":"{:.2f} €","Valor Actual (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+            use_container_width=True
         )
+
+        for n in sub['Nombre'].unique():
+            with st.expander(f"Detalle de compras: {n}"):
+                det = sub[sub['Nombre'] == n].copy()
+                det['Precio Actual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+                det['Beneficio (€/$)'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+                
+                det_display = det.rename(columns={
+                    'Cant': 'Cantidad',
+                    'Coste': 'Inversión',
+                    'Valor Mercado': 'Valor Mercado (€)'
+                })
+
+                st.dataframe(
+                    det_display[['Fecha', 'Cantidad', 'Inversión', 'Precio Actual', 'Valor Mercado (€)', 'Beneficio (€/$)', 'Rentabilidad %']]
+                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
+                    .format({"Cantidad":"{:.4f}","Inversión":"{:.2f} €","Valor Mercado (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                    use_container_width=True, hide_index=True
+                )
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
@@ -249,19 +246,25 @@ if check_password():
     # --- 10. DIARIO HISTÓRICO ---
     st.header("📜 Diario Histórico de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+    # Se eliminan los colores del Importe según solicitud
+    st.dataframe(
+        df_ops.style.format({"Importe": "{:,.2f} €"}), 
+        use_container_width=True
+    )
     st.divider()
 
     # --- 11. APORTACIONES FAMILIARES ---
-    st.header("📑 Aportaciones Familiares")
+    st.header("📑 Aportaciones Familiares (R4 + MyInvestor)")
     df_ap = st.session_state.df_aportaciones.copy()
+    df_ap['Fecha'] = pd.to_datetime(df_ap['Fecha']).dt.date
 
     col_a, col_x = st.columns(2)
     with col_a:
         st.subheader("👨‍💼 ANDER")
         d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True,
-                            column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"), "Fecha": st.column_config.DateColumn()})
+                            column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
+                                           "Fecha": st.column_config.DateColumn()})
         total_a = e_a['Importe'].sum()
         st.info(f"**TOTAL ANDER: {total_a:,.2f} €**")
 
@@ -269,7 +272,8 @@ if check_password():
         st.subheader("👨‍💼 XABAT")
         d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True,
-                            column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"), "Fecha": st.column_config.DateColumn()})
+                            column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
+                                           "Fecha": st.column_config.DateColumn()})
         total_x = e_x['Importe'].sum()
         st.info(f"**TOTAL XABAT: {total_x:,.2f} €**")
 
@@ -280,13 +284,15 @@ if check_password():
         st.success("Aportaciones guardadas!")
         st.rerun()
 
-    st.markdown(f"<div style='text-align: center; background: #2e7d32; padding: 15px; border-radius: 10px; color: white; font-size: 22px; font-weight: bold;'>SUMA TOTAL APORTADO: {total_a + total_x:,.2f} €</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: center; background: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 20px; font-weight: bold;'>SUMA TOTAL APORTADO: {total_a + total_x:,.2f} €</div>", unsafe_allow_html=True)
     st.divider()
 
-    # --- 12. GRÁFICAS ---
+    # --- 12. GRÁFICAS (AL FINAL) ---
     st.header("📊 Análisis Visual de la Cartera")
+    st.plotly_chart(px.pie(df_v, values='Valor Mercado', names='Nombre', title="Distribución Global de Activos (Toda la Cartera)", hole=0.4), use_container_width=True)
+    
     g1, g2 = st.columns(2)
     with g1:
-        st.plotly_chart(px.pie(df_v, values='Valor Mercado', names='Nombre', title="Distribución por Activos", hole=0.4), use_container_width=True)
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.3), use_container_width=True)
     with g2:
-        st.plotly_chart(px.pie(df_v, values='Valor Mercado', names='Broker', title="Distribución por Broker", hole=0.4, color_discrete_map={'MyInvestor':'#0046ff','Renta 4':'#ff4b4b'}), use_container_width=True)
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.3), use_container_width=True)
