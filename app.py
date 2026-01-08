@@ -15,55 +15,51 @@ def check_password():
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
-
     if "password_correct" not in st.session_state:
         st.title("🔐 Acceso Privado")
         st.text_input("Introduce la clave familiar:", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.title("🔐 Acceso Privado")
-        st.text_input("Clave incorrecta. Inténtalo de nuevo:", type="password", on_change=password_entered, key="password")
-        st.error("😕 Esa no es la clave.")
         return False
     return True
 
 if check_password():
     
-    # --- 3. BASE DE DATOS MAESTRA ---
+    # --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS) ---
     def cargar_datos_maestros():
         return [
-            # ACCIONES (MyInvestor)
+            # ACCIONES
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
             {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR"},
             {"Fecha": "2025-10-09", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1290.0, "Coste": 1018.05, "P_Act": 0.718, "Moneda": "EUR"},
             {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 266.83, "Moneda": "USD"},
             {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 29.50, "Moneda": "USD"},
-
             # FONDOS RENTA 4
             {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86, "Moneda": "EUR"},
             {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22, "Moneda": "EUR"},
             {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22, "Moneda": "EUR"},
-            {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0562247428", "Nombre": "JPM US Short Duration", "Cant": 87.425, "Coste": 9999.96, "P_Act": 108.02, "Moneda": "EUR"},
             {"Fecha": "2025-02-05", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 203.1068, "Coste": 5000.00, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-03-04", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 21.8300, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-04-10", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 25.2488, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-09-02", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 41.5863, "Coste": 1000.00, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
             {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
-
-            # FONDOS MYINVESTOR (Datos de tu imagen real)
+            # FONDOS MYINVESTOR
             {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    ARCHIVO_CSV = "cartera_familiar_v38.csv"
+    # --- 4. BASE DE DATOS DE OPERACIONES CERRADAS ---
+    def cargar_operaciones_realizadas():
+        return [
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Acción": "Venta Total", "Invertido": 9999.96, "Recuperado": 9443.64, "Resultado": -556.32, "Motivo": "Inversión estancada - Reasignación capital"}
+        ]
+
+    ARCHIVO_CSV = "cartera_familiar_v39.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    # Lógica de colores fija (Corregida para evitar ValueErrors)
     def resaltar_gp(val):
         if isinstance(val, str) and "€" in val:
             try:
@@ -73,7 +69,7 @@ if check_password():
             except: return None
         return None
 
-    # --- 4. BARRA LATERAL ---
+    # --- 5. SIDEBAR ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
@@ -93,18 +89,15 @@ if check_password():
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
             st.rerun()
 
-    # --- 5. PROCESAMIENTO ---
+    # --- 6. PROCESAMIENTO ---
     df = st.session_state.df_cartera.copy()
     rate_usd = getattr(st.session_state, 'cambio_usd', 1.09)
-    
     df['Valor_Actual'] = df['P_Act'] * df['Cant']
     df['GP_EUR'] = df['Valor_Actual'] - df['Coste']
     df['Rent. %'] = (df['GP_EUR'] / df['Coste'] * 100).fillna(0)
 
-    # --- 6. INTERFAZ ---
+    # --- 7. INTERFAZ PRINCIPAL ---
     st.title("🏦 Cuadro de Mando Patrimonial")
-
-    # Métricas principales
     c1, c2, c3 = st.columns(3)
     gp_acc = df[df['Tipo'] == 'Acción']['GP_EUR'].sum()
     gp_fon = df[df['Tipo'] == 'Fondo']['GP_EUR'].sum()
@@ -112,7 +105,7 @@ if check_password():
 
     c1.metric("G/P Acciones", f"{gp_acc:,.2f} € ({gp_acc*rate_usd:,.2f} $)")
     c2.metric("G/P Fondos", f"{gp_fon:,.2f} €")
-    c3.metric("G/P TOTAL GLOBAL", f"{gp_tot:,.2f} € ({gp_tot*rate_usd:,.2f} $)")
+    c3.metric("G/P TOTAL VIVO", f"{gp_tot:,.2f} € ({gp_tot*rate_usd:,.2f} $)")
     st.divider()
 
     def fmt_selectivo(val_eur, moneda, decimales=2):
@@ -123,54 +116,30 @@ if check_password():
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
-        
-        # Agrupación Resumen
         res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','GP_EUR':'sum', 'P_Act': 'first'}).reset_index()
         res['Rent. %'] = (res['GP_EUR'] / res['Coste'] * 100)
-        
-        # Formateo selectivo
         res['P_Act_Fmt'] = res.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
         res['Ganancia_Fmt'] = res.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
         
-        st.subheader(f"📊 Situación Actual ({titulo})")
-        
-        # TABLA EDITABLE PARA FONDOS, NORMAL PARA ACCIONES
-        cols_disp = ['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']
-        column_config = {"P_Act_Fmt": "P_Act", "Ganancia_Fmt": "Ganancia (G/P)"}
-
         if filtro == "Fondo":
-            st.warning("💡 **RELLENAR ESTO:** Haz doble clic en la casilla 'P_Act' de la tabla para actualizar el precio del banco.")
-            # Editor para fondos
             res_editable = res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act', 'Ganancia_Fmt', 'Rent. %']]
-            edited = st.data_editor(
-                res_editable.style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}),
-                use_container_width=True,
-                disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'],
-                key=f"editor_{filtro}"
-            )
-            # Guardar cambios
+            edited = st.data_editor(res_editable.style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True, disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'], key=f"editor_{filtro}")
             for i, row in edited.iterrows():
                 st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
-            # Tabla normal para acciones
-            st.dataframe(
-                res[cols_disp].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}),
-                use_container_width=True
-            )
-        
-        # HISTORIAL
-        st.subheader(f"📜 Detalle por Operaciones ({titulo})")
-        for n in df_sub['Nombre'].unique():
-            h = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
-            h['Precio'] = h.apply(lambda r: fmt_selectivo(r['P_Act'], r['Moneda'], 4), axis=1)
-            h['Ganancia'] = h.apply(lambda r: fmt_selectivo(r['GP_EUR'], r['Moneda']), axis=1)
-            with st.expander(f"Detalle: {n}"):
-                st.table(h[['Fecha','Cant','Coste','Precio','Ganancia','Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia']).format({"Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"}))
+            st.dataframe(res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True)
 
     mostrar_seccion("Acciones", "Acción")
-    st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
+    # --- 8. DIARIO DE OPERACIONES REALIZADAS (NUEVO) ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución del Patrimonio", hole=0.4), use_container_width=True)
+    st.header("📜 Diario de Operaciones Realizadas")
+    st.info("Lista de cierres de posición, ventas y movimientos ejecutados.")
+    df_cerradas = pd.DataFrame(cargar_operaciones_realizadas())
+    
+    st.table(df_cerradas.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Resultado']).format({"Invertido": "{:.2f} €", "Recuperado": "{:.2f} €", "Resultado": "{:.2f} €"}))
+
+    st.divider()
+    st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
