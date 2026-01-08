@@ -1,108 +1,183 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import plotly.express as px
 
-# --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Cartera Agirre & Uranga v58", layout="wide")
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide")
 
-# --- 2. SEGURIDAD ---
-if "auth" not in st.session_state:
-    st.session_state["auth"] = False
+# --- 2. SISTEMA DE SEGURIDAD ---
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
 
-if not st.session_state["auth"]:
-    st.title("🔐 Acceso Cartera")
-    pwd = st.text_input("Introduce la clave:", type="password")
-    if pwd == "1234":
-        st.session_state["auth"] = True
-        st.rerun()
+def validar_password():
+    if st.session_state["password_input"] == "1234":
+        st.session_state["autenticado"] = True
+    else:
+        st.error("😕 Clave incorrecta.")
+
+if not st.session_state["autenticado"]:
+    st.title("🔐 Acceso Privado")
+    st.text_input("Introduce la clave familiar:", type="password", key="password_input", on_change=validar_password)
     st.stop()
 
-# --- 3. BASE DE DATOS MAESTRA (16 OPERACIONES REVISADAS) ---
-def cargar_datos():
+# --- 3. DATOS MAESTROS (ACTIVOS VIVOS) ---
+def cargar_datos_maestros():
     return [
-        # ACCIONES MYINVESTOR
-        {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.119, "Mon": "EUR"},
-        {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Mon": "EUR"},
-        {"Fecha": "2025-10-09", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1290.0, "Coste": 1018.05, "P_Act": 0.718, "Mon": "EUR"},
-        {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 530.00, "Mon": "USD"},
-        {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 35.00, "Mon": "USD"},
-        
-        # FONDOS RENTA 4
-        {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86, "Mon": "EUR"},
-        {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22, "Mon": "EUR"},
-        {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22, "Mon": "EUR"},
-        
-        # COMPRAS NUMANTIA
-        {"Fecha": "2025-02-05", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 203.1068, "Coste": 5000.00, "P_Act": 25.93, "Mon": "EUR"},
-        {"Fecha": "2025-03-04", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 21.8300, "Coste": 500.00, "P_Act": 25.93, "Mon": "EUR"},
-        {"Fecha": "2025-04-10", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 25.2488, "Coste": 500.00, "P_Act": 25.93, "Mon": "EUR"},
-        {"Fecha": "2025-09-02", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 41.5863, "Coste": 1000.00, "P_Act": 25.93, "Mon": "EUR"},
-        {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.93, "Mon": "EUR"},
-        {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.93, "Mon": "EUR"},
-        
-        # FONDOS MYINVESTOR
-        {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 17.0, "Coste": 6516.20, "P_Act": 412.50, "Mon": "EUR"},
-        {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Mon": "EUR"}
+        {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
+        {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR"},
+        {"Fecha": "2025-10-09", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1290.0, "Coste": 1018.05, "P_Act": 0.718, "Moneda": "EUR"},
+        {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 266.83, "Moneda": "USD"},
+        {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 29.50, "Moneda": "USD"},
+        {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86, "Moneda": "EUR"},
+        {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22, "Moneda": "EUR"},
+        {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22, "Moneda": "EUR"},
+        {"Fecha": "2025-02-05", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 203.1068, "Coste": 5000.00, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-03-04", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 21.8300, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-04-10", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 25.2488, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-09-02", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 41.5863, "Coste": 1000.00, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
+        {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
+        {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
     ]
 
-# Forzamos la actualización de datos para que no use archivos viejos
-df = pd.DataFrame(cargar_datos())
+# --- 4. GESTIÓN DE ARCHIVOS ---
+ARCHIVO_CSV = "cartera_aguirre_uranga_v50.csv"
+if 'df_cartera' not in st.session_state:
+    try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
+    except:
+        st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+        st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-# --- 4. CÁLCULOS ---
-rate = st.session_state.get('euro_rate', 1.09)
-df['Val. Actual'] = df['P_Act'] * df['Cant']
-df['Ganancia'] = df['Val. Actual'] - df['Coste']
-df['Rent. %'] = (df['Ganancia'] / df['Coste'] * 100).fillna(0)
+# --- 5. SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Gestión")
+    if st.button("🔄 Sincronizar Bolsa"):
+        try:
+            rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+            st.session_state.tipo_cambio = rate
+            for i, row in st.session_state.df_cartera.iterrows():
+                if row['Tipo'] == "Acción":
+                    p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
+                    st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.rerun()
+        except: st.error("Sin conexión a Yahoo Finance.")
 
-# --- 5. CABECERA ---
+    if st.button("🚨 Reiniciar"):
+        st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+        st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+        st.rerun()
+
+# --- 6. PROCESAMIENTO ---
+rt = st.session_state.get('tipo_cambio', 1.09)
+df = st.session_state.df_cartera.copy()
+df = df[df['Nombre'] != "JPM US Short Duration"]
+
+df['Valor Mercado'] = df['P_Act'] * df['Cant']
+df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
+df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
+
+# --- 7. INTERFAZ ---
 st.title("🏦 Cartera Agirre & Uranga")
 
 c1, c2, c3 = st.columns(3)
-t_inv = df['Coste'].sum()
-t_val = df['Val. Actual'].sum()
-t_gan = t_val - t_inv
+b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
+b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
+b_tot = df['Beneficio (€)'].sum()
 
-c1.metric("Inversión Total", f"{t_inv:,.2f} €")
-c2.metric("Valor Actual", f"{t_val:,.2f} €")
-c3.metric("Ganancia Total", f"{t_gan:,.2f} €", delta=f"{(t_gan/t_inv*100):.2f}%")
-
+c1.metric("Beneficio Acciones", f"{b_acc:,.2f} €")
+c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €")
+c3.metric("Beneficio TOTAL GLOBAL", f"{b_tot:,.2f} €", delta=f"{b_tot*rt:,.2f} $", delta_color="off")
 st.divider()
 
-# --- 6. TABLAS CON COLORES ---
-def aplicar_estilo(val):
-    color = 'red' if val < 0 else 'green'
-    return f'color: {color}'
+def formatear_precio_divisa(row):
+    val_eur = row['P_Act']
+    if row['Moneda'] == "USD":
+        return f"{val_eur:,.2f} € ({val_eur*rt:,.2f} $)"
+    return f"{val_eur:,.4f} €"
 
-def mostrar_tabla(tipo):
-    st.subheader(f"💼 {tipo}s")
-    df_temp = df[df['Tipo'] == tipo].copy()
-    
-    # Seleccionamos columnas útiles
-    df_ver = df_temp[['Fecha', 'Broker', 'Nombre', 'Cant', 'Coste', 'Val. Actual', 'P_Act', 'Ganancia', 'Rent. %']]
-    
-    # Formateo y Estilo
-    st.dataframe(
-        df_ver.style.format({
-            'Cant': '{:.2f}', 'Coste': '{:.2f} €', 'Val. Actual': '{:.2f} €', 
-            'P_Act': '{:.4f}', 'Ganancia': '{:.2f} €', 'Rent. %': '{:.2f}%'
-        }).applymap(aplicar_estilo, subset=['Ganancia', 'Rent. %']),
-        use_container_width=True, hide_index=True
-    )
+def formatear_beneficio_divisa(row):
+    val_eur = row['Beneficio (€)']
+    if row['Moneda'] == "USD":
+        return f"{val_eur:,.2f} € ({val_eur*rt:,.2f} $)"
+    return f"{val_eur:,.2f} €"
 
-mostrar_tabla("Acción")
-mostrar_tabla("Fondo")
-
-# --- 7. SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Opciones")
-    if st.button("🔄 Sincronizar Bolsa"):
+def resaltar_beneficio(val):
+    if isinstance(val, str) and "€" in val:
         try:
-            r = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-            st.session_state.euro_rate = r
-            st.success("Sincronizado")
-            st.rerun()
-        except: st.error("Error conexión")
+            num = float(val.split("€")[0].replace(",", "").strip())
+            if num > 0: return 'background-color: #d4edda'
+            if num < 0: return 'background-color: #f8d7da'
+        except: return None
+    return None
+
+def mostrar_seccion(titulo, filtro):
+    st.header(f"💼 {titulo}")
+    df_sub = df[df['Tipo'] == filtro].copy()
     
-    if st.button("🔓 Salir"):
-        st.session_state["auth"] = False
-        st.rerun()
+    # Agrupación y Cálculos
+    res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
+    res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
+    
+    # Aplicar formatos de texto (SÓLO PARA VISUALIZACIÓN)
+    res['Precio'] = res.apply(formatear_precio_divisa, axis=1)
+    res['Variación Total'] = res.apply(formatear_beneficio_divisa, axis=1)
+    
+    # Renombrar columnas a lenguaje humano
+    res_humano = res.rename(columns={
+        'Cant': 'Cantidad / Part.',
+        'Coste': 'Dinero Invertido',
+        'Valor Mercado': 'Valor de Mercado',
+        'P_Act': 'Precio Actual'
+    })
+
+    if filtro == "Fondo":
+        st.warning("💡 **MODO EDICIÓN:** Haz doble clic en la casilla **'Precio Actual'** para actualizar.")
+        # Columnas visibles en el editor
+        cols_fon = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor de Mercado', 'Precio Actual', 'Variación Total', 'Rentabilidad %']
+        
+        edited = st.data_editor(
+            res_humano[cols_fon].style.applymap(resaltar_beneficio, subset=['Variación Total']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor de Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+            use_container_width=True, hide_index=True,
+            disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor de Mercado', 'Variación Total', 'Rentabilidad %'],
+            key=f"editor_{filtro}"
+        )
+        # Sincronizar cambios de vuelta al estado de sesión
+        for i, row in edited.iterrows():
+            st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
+        st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+    else:
+        cols_acc = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor de Mercado', 'Precio', 'Variación Total', 'Rentabilidad %']
+        st.dataframe(res_humano[cols_acc].style.applymap(resaltar_beneficio, subset=['Variación Total']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor de Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True, hide_index=True)
+
+    # HISTORIAL DETALLADO
+    st.subheader(f"📜 Detalle de Operaciones ({titulo})")
+    for n in df_sub['Nombre'].unique():
+        hist = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
+        hist['Precio'] = hist.apply(formatear_precio_divisa, axis=1)
+        hist['Beneficio'] = hist.apply(formatear_beneficio_divisa, axis=1)
+        with st.expander(f"Ver historial: {n}"):
+            st.table(hist[['Fecha','Cant','Coste','Precio','Beneficio','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
+
+mostrar_seccion("Acciones", "Acción")
+st.divider()
+mostrar_seccion("Fondos de Inversión", "Fondo")
+
+# --- 8. DIARIO DE OPERACIONES REALIZADAS ---
+st.divider()
+st.header("📜 Diario Histórico de Operaciones")
+df_ops = pd.DataFrame([
+    {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Compra inicial", "Importe": 63822.16},
+    {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00},
+    {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Compra inicial", "Importe": 7000.00},
+    {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Compra inicial", "Importe": 9999.96},
+    {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20},
+    {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32}
+]).sort_values(by='Fecha', ascending=False)
+st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+
+# --- 9. GRÁFICA ---
+st.divider()
+st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
