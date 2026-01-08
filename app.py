@@ -4,6 +4,13 @@ import yfinance as yf
 import plotly.express as px
 from datetime import datetime, date
 
+# --- 0. CARGA SEGURA DE PDF (Para evitar errores si no está instalado) ---
+try:
+    from fpdf import FPDF
+    PDF_DISPONIBLE = True
+except ImportError:
+    PDF_DISPONIBLE = False
+
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide", page_icon="📈")
 
@@ -43,6 +50,21 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
+    def generar_pdf(inv_total, val_total, ben_total, t_a, t_x):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(0, 10, "Resumen Cartera Agirre & Uranga", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", '', 12)
+        pdf.cell(0, 10, f"Total Invertido: {inv_total:,.2f} EUR", ln=True)
+        pdf.cell(0, 10, f"Valor Actual: {val_total:,.2f} EUR", ln=True)
+        pdf.cell(0, 10, f"Beneficio: {ben_total:,.2f} EUR", ln=True)
+        pdf.ln(10)
+        pdf.cell(0, 10, f"Aportado Ander: {t_a:,.2f} EUR", ln=True)
+        pdf.cell(0, 10, f"Aportado Xabat: {t_x:,.2f} EUR", ln=True)
+        return pdf.output(dest='S').encode('latin-1', 'ignore')
+
     # --- 4. BASES DE DATOS ---
     def cargar_datos_maestros():
         return [
@@ -64,38 +86,34 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    def cargar_diario_operaciones():
-        return [
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Compra inicial", "Importe": 63822.16, "Detalle": "Entrada fondo monetario"},
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada"},
-            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Compra inicial", "Importe": 7000.00, "Detalle": "Entrada deuda nórdica"},
-            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "Ampliación", "Importe": 3000.00, "Detalle": "Incremento posición"},
-            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Compra inicial", "Importe": 9999.96, "Detalle": "Entrada posición"},
-            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "Compra inicial", "Importe": 5000.00, "Detalle": "Entrada fondo"},
-            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
-            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "Compra", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
-            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 1000.00, "Detalle": "Incremento capital"},
-            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "Compra", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
-            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "Compra inicial", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
-            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 451.82, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "Ampliación", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
-            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
-            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
-        ]
-
     def cargar_datos_aportaciones():
         return [
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 44000.0},
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 10, 4), "Importe": 600.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 1, 8), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 4, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 4, 30), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 8, 14), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 21), "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 12, 31), "Importe": 500.0},
             {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 30000.0},
-            # ... Resto de datos omitidos por brevedad pero cargados en la sesión ...
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 11, 21), "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 1, 22), "Importe": 5000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 3, 3), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
         ]
 
     # --- 5. GESTIÓN DE ARCHIVOS ---
@@ -134,7 +152,20 @@ if check_password():
                             st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.rerun()
-            except: st.error("Error al sincronizar acciones.")
+            except: st.error("Error al sincronizar.")
+        
+        if PDF_DISPONIBLE:
+            st.divider()
+            st.header("📄 Informes")
+            # Este botón solo aparecerá si fpdf está instalado
+            total_inv = st.session_state.df_cartera['Coste'].sum()
+            total_val = (st.session_state.df_cartera['P_Act'] * st.session_state.df_cartera['Cant']).sum()
+            total_ben = total_val - total_inv
+            t_a = st.session_state.df_aportaciones[st.session_state.df_aportaciones['Titular']=='Ander']['Importe'].sum()
+            t_x = st.session_state.df_aportaciones[st.session_state.df_aportaciones['Titular']=='Xabat']['Importe'].sum()
+            
+            pdf_data = generar_pdf(total_inv, total_val, total_ben, t_a, t_x)
+            st.download_button(label="📥 Descargar Resumen PDF", data=pdf_data, file_name="Cartera_Agirre_Uranga.pdf", mime="application/pdf")
         
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
@@ -165,21 +196,15 @@ if check_password():
     def mostrar_seccion(tit, tipo_filtro):
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
-        
-        # Agregado para resumen humano
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
-        
-        # Formateo de columnas para visualización
-        res['Precio Actual'] = res['P_Act'] # Mantenemos numérico para el editor si es Fondo
+        res['Precio Actual'] = res['P_Act']
         res['Precio Visual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
-        
         res_display = res.rename(columns={'Cant': 'Cantidad / Part.', 'Coste': 'Inversión Total', 'Valor Mercado': 'Valor Actual (€)'})
 
         if tipo_filtro == "Fondo":
             st.info("💡 **MODO EDICIÓN:** Cambia el 'Precio Actual' y pulsa fuera de la celda. Luego dale al botón 'Guardar Precios de Fondos'.")
-            # El editor solo permite cambiar 'Precio Actual'
             columnas_fondo = ['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %']
             df_editado = st.data_editor(
                 res_display[columnas_fondo].style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
@@ -188,19 +213,13 @@ if check_password():
                 disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Beneficio (€/$)', 'Rentabilidad %'],
                 key="editor_fondos"
             )
-            
             if st.button("💾 Guardar Precios de Fondos"):
                 for index, row in df_editado.iterrows():
-                    nombre_fondo = row['Nombre']
-                    nuevo_precio = row['Precio Actual']
-                    # Actualizamos en el DataFrame maestro de la sesión
-                    st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_fondo, 'P_Act'] = nuevo_precio
-                
+                    st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                st.success("Precios actualizados y cartera recalculada.")
+                st.success("Precios actualizados.")
                 st.rerun()
         else:
-            # Acciones (Estático)
             columnas_accion = ['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Visual', 'Beneficio (€/$)', 'Rentabilidad %']
             st.dataframe(
                 res_display[columnas_accion].style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
@@ -208,7 +227,6 @@ if check_password():
                 use_container_width=True
             )
 
-        # Expanders detallados
         for n in sub['Nombre'].unique():
             with st.expander(f"Detalle de compras: {n}"):
                 det = sub[sub['Nombre'] == n].copy()
@@ -228,8 +246,7 @@ if check_password():
 
     # --- 10. DIARIO HISTÓRICO ---
     st.header("📜 Diario Histórico de Operaciones")
-    df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True)
+    st.dataframe(pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False).style.format({"Importe": "{:,.2f} €"}), use_container_width=True)
     st.divider()
 
     # --- 11. APORTACIONES FAMILIARES ---
@@ -240,19 +257,19 @@ if check_password():
     with col_a:
         st.subheader("👨‍💼 ANDER")
         d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True)
+        e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True, column_config={"Fecha": st.column_config.DateColumn()})
         st.info(f"**TOTAL ANDER: {e_a['Importe'].sum():,.2f} €**")
     with col_x:
         st.subheader("👨‍💼 XABAT")
         d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True)
+        e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True, column_config={"Fecha": st.column_config.DateColumn()})
         st.info(f"**TOTAL XABAT: {e_x['Importe'].sum():,.2f} €**")
     
     if st.button("💾 Guardar Aportaciones"):
         e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
         st.session_state.df_aportaciones = pd.concat([e_a, e_x])
         st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
-        st.success("Aportaciones guardadas!")
+        st.success("Guardado!")
         st.rerun()
 
     st.markdown(f"<div style='text-align: center; background: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 20px; font-weight: bold;'>SUMA TOTAL APORTADO: {e_a['Importe'].sum() + e_x['Importe'].sum():,.2f} €</div>", unsafe_allow_html=True)
