@@ -75,15 +75,14 @@ if check_password():
         ]
 
     # --- 5. GESTIÓN DE ARCHIVOS ---
-    # Usamos un nombre nuevo para resetear cualquier dato técnico previo
-    ARCHIVO_CSV = "cartera_ Aguirre_Uranga_final_v2.csv"
+    ARCHIVO_CSV = "cartera_final_ Aguirre_Uranga.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    def resaltar_estilo(val):
+    def resaltar_beneficio(val):
         if isinstance(val, str) and "€" in val:
             try:
                 num = float(val.split("€")[0].replace(",", "").strip())
@@ -92,13 +91,13 @@ if check_password():
             except: return None
         return None
 
-    # --- 6. SIDEBAR ---
+    # --- 6. BARRA LATERAL ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
             try:
                 rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-                st.session_state.rate_ Aguirre = rate
+                st.session_state.rate_aguirre = rate # <--- CORREGIDO (SIN ESPACIOS)
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
@@ -113,9 +112,9 @@ if check_password():
             st.rerun()
 
     # --- 7. PROCESAMIENTO ---
-    rt = getattr(st.session_state, 'rate_ Aguirre', 1.09)
+    rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df = st.session_state.df_cartera.copy()
-    # Filtro absoluto para la gráfica y tablas vivas
+    # Limpieza absoluta de JPM
     df = df[df['Nombre'] != "JPM US Short Duration"]
     
     df['Valor Mercado'] = df['P_Act'] * df['Cant']
@@ -143,41 +142,34 @@ if check_password():
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
         
-        # Agrupación base
+        # Agrupación y renombramiento humano
         res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
         
-        # Renombrar columnas para la visualización humana
-        res = res.rename(columns={
-            'P_Act': 'Precio Actual',
-            'Cant': 'Cantidad / Part.',
-            'Coste': 'Dinero Invertido'
-        })
-        
-        # Formateo selectivo para la columna de texto Beneficio
+        # Formateo
         res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
         
+        # Columnas amigables
+        res = res.rename(columns={'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido', 'P_Act': 'Precio Actual'})
+
         st.subheader(f"📊 Situación Actual ({titulo})")
         
         if filtro == "Fondo":
             st.warning("💡 **MODO EDICIÓN:** Haz doble clic en la casilla **'Precio Actual'** para actualizar el valor oficial.")
             cols_fon = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            
-            # Editor con nombres 100% humanos
             edited = st.data_editor(
-                res[cols_fon].style.applymap(resaltar_estilo, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                res[cols_fon].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
                 use_container_width=True,
                 disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'],
                 key=f"ed_{filtro}"
             )
-            # Guardar cambios
             for i, row in edited.iterrows():
                 st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
             res['Precio'] = res.apply(lambda r: fmt_mon(r['Precio Actual'], r['Moneda'], 4), axis=1)
             cols_acc = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            st.dataframe(res[cols_acc].style.applymap(resaltar_estilo, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
+            st.dataframe(res[cols_acc].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
 
         st.subheader(f"📜 Detalle de Compras ({titulo})")
         for n in df_sub['Nombre'].unique():
@@ -185,7 +177,7 @@ if check_password():
             com['P_Fmt'] = com.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
             com['B_Fmt'] = com.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
             with st.expander(f"Ver historial: {n}"):
-                st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_estilo, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
+                st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
@@ -199,4 +191,4 @@ if check_password():
 
     # --- 10. GRÁFICA CIRCULAR ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos (Sin JPM)", hole=0.4), use_container_width=True)
+    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
