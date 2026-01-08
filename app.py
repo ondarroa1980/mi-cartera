@@ -175,6 +175,8 @@ if check_password():
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
     df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
+    
+    # Nombres humanos para las columnas internas de cálculo
     df_v['Valor Mercado'] = df_v['P_Act'] * df_v['Cant']
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
@@ -197,12 +199,13 @@ if check_password():
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregado para la tabla principal
+        # Agregado para la tabla principal con nombres humanos
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         
+        # Renombrar columnas para la visualización final
         res_display = res.rename(columns={
             'Cant': 'Cantidad / Part.',
             'Coste': 'Inversión Total',
@@ -243,9 +246,9 @@ if check_password():
     # --- 10. DIARIO HISTÓRICO ---
     st.header("📜 Diario Histórico de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
+    # Se eliminan los colores del Importe según solicitud
     st.dataframe(
-        df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe'])
-        .format({"Importe": "{:,.2f} €"}), 
+        df_ops.style.format({"Importe": "{:,.2f} €"}), 
         use_container_width=True
     )
     st.divider()
