@@ -3,56 +3,23 @@ import pandas as pd
 import yfinance as yf
 import plotly.express as px
 from datetime import datetime
-# --- 6. BARRA LATERAL (CORREGIDA) ---
-    with st.sidebar:
-        st.header("⚙️ Gestión")
-        if st.button("🔄 Sincronizar Bolsa"):
-            success_count = 0
-            fail_tickers = []
-            
-            try:
-                # 1. Intentar obtener el tipo de cambio primero
-                exchange_data = yf.Ticker("EURUSD=X").history(period="1d")
-                if not exchange_data.empty:
-                    rate = exchange_data["Close"].iloc[-1]
-                    st.session_state.rate_aguirre = rate
-                else:
-                    rate = getattr(st.session_state, 'rate_aguirre', 1.09)
-                
-                # 2. Sincronizar cada acción de forma individual
-                for i, row in st.session_state.df_cartera.iterrows():
-                    if row['Tipo'] == "Acción":
-                        try:
-                            ticker_query = yf.Ticker(row['Ticker']).history(period="1d")
-                            if not ticker_query.empty:
-                                p_raw = ticker_query["Close"].iloc[-1]
-                                # Convertir si es USD
-                                p_final = p_raw / rate if row['Moneda'] == "USD" else p_raw
-                                st.session_state.df_cartera.at[i, 'P_Act'] = p_final
-                                success_count += 1
-                            else:
-                                fail_tickers.append(row['Ticker'])
-                        except:
-                            fail_tickers.append(row['Ticker'])
-                
-                # 3. Guardar cambios
-                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                
-                # 4. Feedback al usuario en lugar de un error genérico
-                if fail_tickers:
-                    st.warning(f"⚠️ Actualizadas {success_count} posiciones. Fallaron: {', '.join(set(fail_tickers))}")
-                else:
-                    st.success(f"✅ ¡Todo actualizado! ({success_count} acciones)")
-                
-                st.rerun()
 
-            except Exception as e:
-                st.error(f"Error crítico: {e}")
-        
-        if st.button("🚨 Reiniciar Datos"):
-            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.rerun()
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide", page_icon="📈")
+
+# --- 2. SISTEMA DE SEGURIDAD ---
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == "1234":
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]
+        else:
+            st.session_state["password_correct"] = False
+    if "password_correct" not in st.session_state:
+        st.title("🔐 Acceso Privado")
+        st.text_input("Introduce la clave familiar:", type="password", on_change=password_entered, key="password")
+        return False
+    return True
 
 if check_password():
     
@@ -124,36 +91,51 @@ if check_password():
             except: return None
         return None
 
-    # --- 6. BARRA LATERAL ---
+    # --- 6. BARRA LATERAL (CON SINCRONIZACIÓN QUIRÚRGICA) ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
+            success_count = 0
+            fail_tickers = []
             try:
-                rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
+                # Obtener tipo de cambio
+                exchange_data = yf.Ticker("EURUSD=X").history(period="1d")
+                rate = exchange_data["Close"].iloc[-1] if not exchange_data.empty else getattr(st.session_state, 'rate_aguirre', 1.09)
                 st.session_state.rate_aguirre = rate
+                
+                # Sincronizar acciones una a una
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
-                        p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
-                        st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
+                        try:
+                            ticker_data = yf.Ticker(row['Ticker']).history(period="1d")
+                            if not ticker_data.empty:
+                                p_raw = ticker_data["Close"].iloc[-1]
+                                st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
+                                success_count += 1
+                            else: fail_tickers.append(row['Ticker'])
+                        except: fail_tickers.append(row['Ticker'])
+                
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                if fail_tickers: st.warning(f"Actualizado con avisos en: {', '.join(set(fail_tickers))}")
+                else: st.success(f"Sincronizado: {success_count} acciones.")
                 st.rerun()
-            except: st.error("Sin conexión.")
+            except Exception as e: st.error(f"Error de red: {e}")
         
         if st.button("🚨 Reiniciar Datos"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
             st.rerun()
 
-    # --- 7. PROCESAMIENTO ---
+    # --- 7. PROCESAMIENTO DE DATOS ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df = st.session_state.df_cartera.copy()
-    df = df[df['Nombre'] != "JPM US Short Duration"]
+    df = df[df['Nombre'] != "JPM US Short Duration"] # Limpieza de cerrados
     
     df['Valor Mercado'] = df['P_Act'] * df['Cant']
     df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
     df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
 
-    # --- 8. INTERFAZ (MÉTRICAS SUPERIORES) ---
+    # --- 8. INTERFAZ: MÉTRICAS GLOBALES ---
     st.title("🏦 Cartera Agirre & Uranga")
     
     # Cálculos globales
@@ -162,6 +144,7 @@ if check_password():
     total_beneficio = total_mercado - total_invertido
     rent_total = (total_beneficio / total_invertido * 100) if total_invertido > 0 else 0
 
+    # Fila de métricas principales
     m1, m2, m3 = st.columns(3)
     m1.metric("Dinero Total Invertido", f"{total_invertido:,.2f} €")
     m2.metric("Valor Actual de Cartera", f"{total_mercado:,.2f} €")
@@ -169,7 +152,7 @@ if check_password():
     
     st.divider()
 
-    # Beneficios por tipo (Tu sección original)
+    # Segunda fila de métricas (Por tipo)
     c1, c2 = st.columns(2)
     b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
     b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
@@ -178,6 +161,7 @@ if check_password():
     
     st.divider()
 
+    # --- 9. SECCIONES DETALLADAS ---
     def fmt_mon(v, mon, d=2):
         if mon == "USD": return f"{v:,.{d}f} € ({v*rt:,.2f} $)"
         return f"{v:,.{d}f} €"
@@ -194,7 +178,7 @@ if check_password():
         st.subheader(f"📊 Resumen {titulo}")
         
         if filtro == "Fondo":
-            st.info("Doble clic en 'Precio Actual' para actualizar fondos manualmente.")
+            st.info("💡 Haz doble clic en 'Precio Actual' para actualizar el valor liquidativo.")
             cols_fon = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
             edited = st.data_editor(
                 res[cols_fon].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.4f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
@@ -210,24 +194,24 @@ if check_password():
             cols_acc = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
             st.dataframe(res[cols_acc].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
 
-        st.subheader(f"📜 Detalle de Posiciones ({titulo})")
+        st.subheader(f"📜 Detalle de Compras ({titulo})")
         for n in df_sub['Nombre'].unique():
             com = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
             com['P_Fmt'] = com.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
             com['B_Fmt'] = com.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
-            with st.expander(f"Historial: {n}"):
+            with st.expander(f"Ver historial: {n}"):
                 st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 9. DIARIO HISTÓRICO ---
+    # --- 10. DIARIO HISTÓRICO ---
     st.divider()
     st.header("📜 Diario Histórico de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True)
 
-    # --- 10. GRÁFICA ---
+    # --- 11. GRÁFICA CIRCULAR ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos", hole=0.4), use_container_width=True)
+    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
