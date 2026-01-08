@@ -47,51 +47,55 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # --- 4. DIARIO DE OPERACIONES ---
-    def cargar_diario_operaciones():
+    # --- 4. DATOS DE APORTACIONES (NUEVO SEGÚN IMAGEN) ---
+    def cargar_datos_aportaciones():
         return [
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Compra inicial", "Importe": 63822.16, "Detalle": "Entrada fondo monetario"},
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada"},
-            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Compra inicial", "Importe": 7000.00, "Detalle": "Entrada deuda nórdica"},
-            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "Ampliación", "Importe": 3000.00, "Detalle": "Incremento posición"},
-            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Compra inicial", "Importe": 9999.96, "Detalle": "Entrada posición"},
-            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "Compra inicial", "Importe": 5000.00, "Detalle": "Entrada fondo"},
-            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
-            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "Compra", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
-            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 1000.00, "Detalle": "Incremento capital"},
-            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "Compra", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
-            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "Compra inicial", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
-            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 451.82, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "Ampliación", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
-            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
-            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2024-08-30", "Importe": 44000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2024-09-03", "Importe": 3000.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2024-10-04", "Importe": 600.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2025-01-08", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": "2025-02-07", "Importe": 2500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": "2025-03-03", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2025-04-09", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": "2025-04-30", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": "2025-08-14", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": "2025-08-30", "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": "2025-09-17", "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": "2025-09-21", "Importe": 1000.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": "2025-10-09", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "MyInvestor / Fondo", "Fecha": "2025-11-01", "Importe": 500.0},
+            {"Titular": "Ander", "Broker": "R4", "Fecha": "2025-12-31", "Importe": 500.0},
+            # XABAT
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2024-08-30", "Importe": 30000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2024-09-03", "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2024-11-21", "Importe": 3000.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2025-01-22", "Importe": 5000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor", "Fecha": "2025-02-07", "Importe": 2500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2025-03-03", "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "R4", "Fecha": "2025-08-30", "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": "2025-08-30", "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": "2025-09-17", "Importe": 1000.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": "2025-10-09", "Importe": 500.0},
+            {"Titular": "Xabat", "Broker": "MyInvestor / Fondo", "Fecha": "2025-11-01", "Importe": 500.0},
         ]
 
     # --- 5. GESTIÓN DE ARCHIVOS ---
-    ARCHIVO_CSV = "cartera_final_ Aguirre_Uranga.csv"
+    ARCHIVO_CSV = "cartera_final_aguirre_uranga.csv"
+    ARCHIVO_APORTACIONES = "aportaciones_familiares.csv"
+
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    def resaltar_beneficio(val):
-        if isinstance(val, str) and "€" in val:
-            try:
-                num = float(val.split("€")[0].replace(",", "").strip())
-                if num > 0: return 'background-color: #d4edda'
-                if num < 0: return 'background-color: #f8d7da'
-            except: return None
-        return None
+    if 'df_aportaciones' not in st.session_state:
+        try: st.session_state.df_aportaciones = pd.read_csv(ARCHIVO_APORTACIONES)
+        except:
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_APORTACIONES, index=False)
 
-    # --- 6. BARRA LATERAL ---
+    # --- 6. BARRA LATERAL (SINCRONIZACIÓN MEJORADA) ---
     with st.sidebar:
         st.header("⚙️ Gestión")
         if st.button("🔄 Sincronizar Bolsa"):
@@ -99,111 +103,138 @@ if check_password():
             fail_tickers = []
             try:
                 exchange_data = yf.Ticker("EURUSD=X").history(period="1d")
-                rate = exchange_data["Close"].iloc[-1] if not exchange_data.empty else getattr(st.session_state, 'rate_aguirre', 1.09)
+                rate = exchange_data["Close"].iloc[-1] if not exchange_data.empty else 1.09
                 st.session_state.rate_aguirre = rate
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         try:
-                            t_data = yf.Ticker(row['Ticker']).history(period="1d")
-                            if not t_data.empty:
-                                p_raw = t_data["Close"].iloc[-1]
+                            ticker_data = yf.Ticker(row['Ticker']).history(period="1d")
+                            if not ticker_data.empty:
+                                p_raw = ticker_data["Close"].iloc[-1]
                                 st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                                 success_count += 1
-                            else: fail_tickers.append(row['Ticker'])
                         except: fail_tickers.append(row['Ticker'])
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                if fail_tickers: st.warning(f"Error en: {', '.join(set(fail_tickers))}")
-                else: st.success(f"Actualizadas {success_count} acciones")
                 st.rerun()
-            except Exception as e: st.error(f"Error: {e}")
+            except: st.error("Error de conexión.")
         
-        if st.button("🚨 Reiniciar Datos"):
+        if st.button("🚨 Reiniciar Todo"):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_APORTACIONES, index=False)
             st.rerun()
 
-    # --- 7. PROCESAMIENTO ---
-    rt = getattr(st.session_state, 'rate_aguirre', 1.09)
-    df = st.session_state.df_cartera.copy()
-    df = df[df['Nombre'] != "JPM US Short Duration"]
-    df['Valor Mercado'] = df['P_Act'] * df['Cant']
-    df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
-    df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
-
-    # --- 8. DASHBOARD SUPERIOR ---
+    # --- 7. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
     
-    t_inv = df['Coste'].sum()
-    t_val = df['Valor Mercado'].sum()
+    df_vivos = st.session_state.df_cartera.copy()
+    df_vivos = df_vivos[df_vivos['Nombre'] != "JPM US Short Duration"]
+    df_vivos['Valor Mercado'] = df_vivos['P_Act'] * df_vivos['Cant']
+    df_vivos['Beneficio'] = df_vivos['Valor Mercado'] - df_vivos['Coste']
+    
+    t_inv = df_vivos['Coste'].sum()
+    t_val = df_vivos['Valor Mercado'].sum()
     t_ben = t_val - t_inv
-    t_por = (t_ben / t_inv * 100) if t_inv > 0 else 0
 
     m1, m2, m3 = st.columns(3)
-    m1.metric("Dinero Total Invertido", f"{t_inv:,.2f} €")
+    m1.metric("Dinero Invertido (Vivos)", f"{t_inv:,.2f} €")
     m2.metric("Valor Actual Cartera", f"{t_val:,.2f} €")
-    m3.metric("Beneficio TOTAL VIVO", f"{t_ben:,.2f} €", f"{t_por:,.2f}%")
+    m3.metric("Beneficio TOTAL VIVO", f"{t_ben:,.2f} €", f"{(t_ben/t_inv*100):.2f}%")
     st.divider()
 
-    # --- 9. NUEVAS GRÁFICAS POR TIPO ---
-    st.header("📊 Análisis de Pesos por Activo")
-    g1, g2 = st.columns(2)
+    # --- 8. SECCIÓN APORTACIONES (NUEVA TABLA EDITABLE) ---
+    st.header("📑 Aportaciones Familiares (R4 + MyInvestor)")
+    st.write("Gestiona aquí cuánto dinero ha puesto cada titular en los bancos.")
+
+    # Separamos los datos para Ander y Xabat
+    df_ap = st.session_state.df_aportaciones.copy()
     
-    with g1:
-        df_acc_pie = df[df['Tipo'] == 'Acción'].groupby('Nombre')['Valor Mercado'].sum().reset_index()
-        if not df_acc_pie.empty:
-            st.plotly_chart(px.pie(df_acc_pie, values='Valor Mercado', names='Nombre', title="Porcentaje por Acción", hole=0.3), use_container_width=True)
-        else: st.info("No hay acciones en cartera.")
+    col_ander, col_xabat = st.columns(2)
 
-    with g2:
-        df_fon_pie = df[df['Tipo'] == 'Fondo'].groupby('Nombre')['Valor Mercado'].sum().reset_index()
-        if not df_fon_pie.empty:
-            st.plotly_chart(px.pie(df_fon_pie, values='Valor Mercado', names='Nombre', title="Porcentaje por Fondo", hole=0.3), use_container_width=True)
-        else: st.info("No hay fondos en cartera.")
+    with col_ander:
+        st.subheader("👨‍💼 ANDER")
+        df_ander = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+        edited_ander = st.data_editor(
+            df_ander, 
+            num_rows="dynamic", 
+            key="edit_ander",
+            use_container_width=True,
+            column_config={
+                "Importe": st.column_config.NumberColumn(format="%.2f €"),
+                "Fecha": st.column_config.DateColumn()
+            }
+        )
+        total_a = edited_ander['Importe'].sum()
+        st.info(f"**TOTAL ANDER: {total_a:,.2f} €**")
+
+    with col_xabat:
+        st.subheader("👨‍💼 XABAT")
+        df_xabat = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+        edited_xabat = st.data_editor(
+            df_xabat, 
+            num_rows="dynamic", 
+            key="edit_xabat",
+            use_container_width=True,
+            column_config={
+                "Importe": st.column_config.NumberColumn(format="%.2f €"),
+                "Fecha": st.column_config.DateColumn()
+            }
+        )
+        total_x = edited_xabat['Importe'].sum()
+        st.info(f"**TOTAL XABAT: {total_x:,.2f} €**")
+
+    # Guardar cambios si se detectan
+    if st.button("💾 Guardar Aportaciones"):
+        edited_ander['Titular'] = 'Ander'
+        edited_xabat['Titular'] = 'Xabat'
+        final_aportaciones = pd.concat([edited_ander, edited_xabat])
+        st.session_state.df_aportaciones = final_aportaciones
+        st.session_state.df_aportaciones.to_csv(ARCHIVO_APORTACIONES, index=False)
+        st.success("Aportaciones guardadas correctamente.")
+        st.rerun()
+
+    # Métrica de suma total de aportaciones
+    st.markdown(f"""
+    <div style="text-align: center; background-color: #ffeb3b; padding: 10px; border-radius: 10px; color: black; font-size: 24px; font-weight: bold;">
+        SUMA TOTAL APORTADO: {total_a + total_x:,.2f} €
+    </div>
+    """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 10. TABLAS DETALLADAS ---
-    def fmt_mon(v, mon, d=2):
-        if mon == "USD": return f"{v:,.{d}f} € ({v*rt:,.2f} $)"
-        return f"{v:,.{d}f} €"
+    # --- 9. GRÁFICAS DE PESOS ---
+    st.header("📊 Distribución de Cartera")
+    g1, g2 = st.columns(2)
+    with g1:
+        st.plotly_chart(px.pie(df_vivos[df_vivos['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.3), use_container_width=True)
+    with g2:
+        st.plotly_chart(px.pie(df_vivos[df_vivos['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.3), use_container_width=True)
+    st.divider()
+
+    # --- 10. DETALLE DE POSICIONES VIVAS ---
+    def resaltar(val):
+        if isinstance(val, str) and "€" in val:
+            try:
+                n = float(val.split("€")[0].replace(",","").strip())
+                return 'background-color: #d4edda' if n > 0 else 'background-color: #f8d7da'
+            except: pass
+        return None
 
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
-        df_sub = df[df['Tipo'] == filtro].copy()
-        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
-        res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
-        res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
-        res = res.rename(columns={'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido', 'P_Act': 'Precio Actual'})
+        df_sub = df_vivos[df_vivos['Tipo'] == filtro].copy()
+        res = df_sub.groupby(['Nombre', 'Broker']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first'}).reset_index()
+        res['Beneficio (€)'] = res['Valor Mercado'] - res['Coste']
+        res['Rent. %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
         
-        if filtro == "Fondo":
-            st.info("💡 Doble clic en 'Precio Actual' para actualizar manualmente.")
-            cols = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            edited = st.data_editor(res[cols].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.4f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True, disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'], key=f"ed_{filtro}")
-            for i, row in edited.iterrows():
-                st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-        else:
-            res['Precio'] = res.apply(lambda r: fmt_mon(r['Precio Actual'], r['Moneda'], 4), axis=1)
-            cols = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            st.dataframe(res[cols].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
-
-        st.subheader(f"📜 Detalle de Historial ({titulo})")
+        st.dataframe(
+            res.style.applymap(resaltar, subset=['Beneficio (€)']).format({"Coste":"{:.2f} €","Valor Mercado":"{:.2f} €","Beneficio (€)":"{:.2f} €","Rent. %":"{:.2f}%"}), 
+            use_container_width=True
+        )
+        
         for n in df_sub['Nombre'].unique():
-            com = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
-            com['P_Fmt'] = com.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
-            com['B_Fmt'] = com.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
-            with st.expander(f"Historial: {n}"):
-                st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
+            with st.expander(f"Ver historial: {n}"):
+                st.table(df_sub[df_sub['Nombre']==n][['Fecha','Cant','Coste','P_Act','Beneficio']])
 
     mostrar_seccion("Acciones", "Acción")
-    st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
-
-    # --- 11. DIARIO HISTÓRICO ---
-    st.divider()
-    st.header("📜 Diario Histórico de Operaciones")
-    df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True)
-
-    # --- 12. GRÁFICA GLOBAL ---
-    st.divider()
-    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución Global (Cartera Completa)", hole=0.4), use_container_width=True)
