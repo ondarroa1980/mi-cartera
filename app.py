@@ -2,33 +2,34 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.express as px
-from datetime import datetime
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide")
 
-# --- 2. SISTEMA DE SEGURIDAD ---
-def check_password():
-    def password_entered():
-        if st.session_state.get("password") == "1234":
-            st.session_state["password_correct"] = True
-        return st.session_state.get("password_correct", False)
+# --- 2. SISTEMA DE SEGURIDAD (Versión Simplificada y Robusta) ---
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
 
-if not st.session_state.get("password_correct"):
+def validar_password():
+    if st.session_state["password_input"] == "1234":
+        st.session_state["autenticado"] = True
+    else:
+        st.error("😕 Clave incorrecta.")
+
+if not st.session_state["autenticado"]:
     st.title("🔐 Acceso Privado")
-    st.text_input("Introduce la clave familiar:", type="password", key="password", on_change=check_password)
-    st.stop()
+    st.text_input("Introduce la clave familiar:", type="password", key="password_input", on_change=validar_password)
+    st.info("Escribe la clave y pulsa 'Enter' para entrar.")
+    st.stop() # Detiene la ejecución aquí hasta que se autentique
 
-# --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS) ---
+# --- 3. DATOS MAESTROS (ACTIVOS VIVOS) ---
 def cargar_datos_maestros():
     return [
-        # ACCIONES
         {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
         {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR"},
         {"Fecha": "2025-10-09", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1290.0, "Coste": 1018.05, "P_Act": 0.718, "Moneda": "EUR"},
         {"Fecha": "2025-09-02", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "UNH", "Nombre": "UnitedHealth", "Cant": 7.0, "Coste": 1867.84, "P_Act": 266.83, "Moneda": "USD"},
         {"Fecha": "2025-09-16", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "JD", "Nombre": "JD.com", "Cant": 58.0, "Coste": 1710.79, "P_Act": 29.50, "Moneda": "USD"},
-        # FONDOS RENTA 4
         {"Fecha": "2024-09-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "LU0034353002", "Nombre": "DWS Floating Rate", "Cant": 714.627, "Coste": 63822.16, "P_Act": 92.86, "Moneda": "EUR"},
         {"Fecha": "2024-11-26", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 45.7244, "Coste": 7000.00, "P_Act": 160.22, "Moneda": "EUR"},
         {"Fecha": "2024-11-27", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "FI0008811997", "Nombre": "Evli Nordic Corp", "Cant": 19.6043, "Coste": 3000.00, "P_Act": 160.22, "Moneda": "EUR"},
@@ -38,47 +39,84 @@ def cargar_datos_maestros():
         {"Fecha": "2025-09-02", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 41.5863, "Coste": 1000.00, "P_Act": 25.9368, "Moneda": "EUR"},
         {"Fecha": "2025-09-30", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 18.3846, "Coste": 451.82, "P_Act": 25.9368, "Moneda": "EUR"},
         {"Fecha": "2025-11-15", "Tipo": "Fondo", "Broker": "Renta 4", "Ticker": "ES0173311103", "Nombre": "Numantia Patrimonio", "Cant": 19.2774, "Coste": 500.00, "P_Act": 25.9368, "Moneda": "EUR"},
-        # FONDOS MYINVESTOR
         {"Fecha": "2025-02-19", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "IE00BYX5NX33", "Nombre": "MSCI World Index", "Cant": 549.942, "Coste": 6516.20, "P_Act": 12.6633, "Moneda": "EUR"},
         {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
     ]
 
-# --- 4. GESTIÓN DE ARCHIVOS ---
-ARCHIVO_CSV = "cartera_ Aguirre_Uranga_v48.csv"
+# --- 4. DIARIO DE OPERACIONES ---
+def cargar_diario_operaciones():
+    return [
+        {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Compra inicial", "Importe": 63822.16, "Detalle": "Entrada fondo monetario"},
+        {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada"},
+        {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Compra inicial", "Importe": 7000.00, "Detalle": "Entrada deuda nórdica"},
+        {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "Ampliación", "Importe": 3000.00, "Detalle": "Incremento posición"},
+        {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Compra inicial", "Importe": 9999.96, "Detalle": "Entrada posición"},
+        {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "Compra inicial", "Importe": 5000.00, "Detalle": "Entrada fondo"},
+        {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
+        {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "Compra", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
+        {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 1000.00, "Detalle": "Incremento capital"},
+        {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "Compra", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
+        {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "Compra inicial", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
+        {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 451.82, "Detalle": "Aportación periódica"},
+        {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "Ampliación", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
+        {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
+        {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
+        {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
+        {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
+    ]
+
+# --- 5. GESTIÓN DE PERSISTENCIA ---
+ARCHIVO_CSV = "cartera_aguirre_uranga_final_v49.csv"
 if 'df_cartera' not in st.session_state:
     try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
     except:
         st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
         st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-# --- 5. SIDEBAR (CORREGIDO Y SEGURO) ---
+def resaltar_beneficio(val):
+    if isinstance(val, str) and "€" in val:
+        try:
+            num = float(val.split("€")[0].replace(",", "").strip())
+            if num > 0: return 'background-color: #d4edda'
+            if num < 0: return 'background-color: #f8d7da'
+        except: return None
+    return None
+
+# --- 6. SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Gestión")
     if st.button("🔄 Sincronizar Bolsa"):
         try:
             rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-            st.session_state.rate_sync = rate
+            st.session_state.rate_eur_usd = rate
             for i, row in st.session_state.df_cartera.iterrows():
                 if row['Tipo'] == "Acción":
                     p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
-                    # Solo convertimos si la moneda original es USD
                     st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.success(f"Sincronizado (1€ = {rate:.4f}$)")
             st.rerun()
-        except: st.error("Sin conexión.")
+        except: st.error("Error al conectar con la bolsa.")
+    
+    if st.button("🚨 Reiniciar Datos"):
+        st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+        st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+        st.rerun()
 
-# --- 6. CÁLCULOS ---
-rt = st.session_state.get('rate_sync', 1.09)
+# --- 7. PROCESAMIENTO ---
+rt = st.session_state.get('rate_eur_usd', 1.09)
 df = st.session_state.df_cartera.copy()
 df = df[df['Nombre'] != "JPM US Short Duration"]
 
-# Sumas exactas
 df['Valor Mercado'] = df['P_Act'] * df['Cant']
 df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
 df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
 
-# --- 7. INTERFAZ ---
+# --- 8. INTERFAZ ---
 st.title("🏦 Cartera Agirre & Uranga")
 
 c1, c2, c3 = st.columns(3)
@@ -86,10 +124,9 @@ b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
 b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
 b_tot = df['Beneficio (€)'].sum()
 
-c1.metric("Beneficio Acciones", f"{b_acc:,.2f} €", delta=None)
-c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €", delta=None)
+c1.metric("Beneficio Acciones", f"{b_acc:,.2f} €")
+c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €")
 c3.metric("Beneficio TOTAL VIVO", f"{b_tot:,.2f} €", delta=f"{b_tot*rt:,.2f} $", delta_color="off")
-
 st.divider()
 
 def fmt_mon(v, mon, d=2):
@@ -102,23 +139,45 @@ def mostrar_seccion(titulo, filtro):
     
     res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
     res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
-    res['Precio'] = res.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
+    res['Precio Actual'] = res.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
     res['Beneficio Total'] = res.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
     
     if filtro == "Fondo":
-        res_ed = res.rename(columns={'P_Act': 'Precio Actual', 'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido'})
+        st.warning("💡 **MODO EDICIÓN:** Haz doble clic en la casilla **'P_Act_Editar'** para actualizar el valor oficial.")
+        res_ed = res.rename(columns={'P_Act': 'P_Act_Editar', 'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido'})
+        cols_fon = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'P_Act_Editar', 'Beneficio Total', 'Rentabilidad %']
         edited = st.data_editor(
-            res_ed[['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio Total', 'Rentabilidad %']],
+            res_ed[cols_fon].style.applymap(resaltar_beneficio, subset=['Beneficio Total']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
             use_container_width=True, hide_index=True,
-            disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio Total', 'Rentabilidad %']
+            disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio Total', 'Rentabilidad %'],
+            key=f"ed_{filtro}"
         )
         for i, row in edited.iterrows():
-            st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
+            st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act_Editar']
+        st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
     else:
-        st.dataframe(res.rename(columns={'Cant': 'Cant.', 'Coste': 'Invertido'})[['Broker', 'Nombre', 'Cant.', 'Invertido', 'Valor Mercado', 'Precio', 'Beneficio Total', 'Rentabilidad %']], use_container_width=True, hide_index=True)
+        res_sh = res.rename(columns={'Cant': 'Cant.', 'Coste': 'Invertido'})
+        cols_acc = ['Broker', 'Nombre', 'Cant.', 'Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio Total', 'Rentabilidad %']
+        st.dataframe(res_sh[cols_acc].style.applymap(resaltar_beneficio, subset=['Beneficio Total']).format({"Cant.":"{:.2f}","Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True, hide_index=True)
+
+    st.subheader(f"📜 Detalle de Compras ({titulo})")
+    for n in df_sub['Nombre'].unique():
+        com = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
+        com['P_Fmt'] = com.apply(lambda r: fmt_mon(r['P_Act'], r['Moneda'], 4), axis=1)
+        com['B_Fmt'] = com.apply(lambda r: fmt_mon(r['Beneficio (€)'], r['Moneda']), axis=1)
+        with st.expander(f"Ver historial: {n}"):
+            st.table(com[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Part.','Coste':'Invertido','P_Fmt':'Precio Actual','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Part.":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
 
 mostrar_seccion("Acciones", "Acción")
+st.divider()
 mostrar_seccion("Fondos de Inversión", "Fondo")
 
+# --- 9. DIARIO HISTÓRICO ---
+st.divider()
+st.header("📜 Diario Histórico de Operaciones")
+df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
+st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+
+# --- 10. GRÁFICA CIRCULAR ---
 st.divider()
 st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
