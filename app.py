@@ -120,17 +120,29 @@ if check_password():
     df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
     df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
 
-    # --- 8. INTERFAZ ---
+    # --- 8. INTERFAZ (MÉTRICAS SUPERIORES) ---
     st.title("🏦 Cartera Agirre & Uranga")
     
-    c1, c2, c3 = st.columns(3)
+    # Cálculos globales
+    total_invertido = df['Coste'].sum()
+    total_mercado = df['Valor Mercado'].sum()
+    total_beneficio = total_mercado - total_invertido
+    rent_total = (total_beneficio / total_invertido * 100) if total_invertido > 0 else 0
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Dinero Total Invertido", f"{total_invertido:,.2f} €")
+    m2.metric("Valor Actual de Cartera", f"{total_mercado:,.2f} €")
+    m3.metric("Beneficio TOTAL VIVO", f"{total_beneficio:,.2f} €", f"{rent_total:,.2f}%")
+    
+    st.divider()
+
+    # Beneficios por tipo (Tu sección original)
+    c1, c2 = st.columns(2)
     b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
     b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
-    b_tot = df['Beneficio (€)'].sum()
-
-    c1.metric("Beneficio Acciones", f"{b_acc:,.2f} €")
-    c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €")
-    c3.metric("Beneficio TOTAL VIVO", f"{b_tot:,.2f} €", delta=f"{rt:.4f} USD/EUR", delta_color="off")
+    c1.metric("Beneficio Acum. Acciones", f"{b_acc:,.2f} €")
+    c2.metric("Beneficio Acum. Fondos", f"{b_fon:,.2f} €")
+    
     st.divider()
 
     def fmt_mon(v, mon, d=2):
