@@ -5,7 +5,7 @@ import plotly.express as px
 from datetime import datetime
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Nuestra Cartera Familiar - v43", layout="wide")
+st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide")
 
 # --- 2. SISTEMA DE SEGURIDAD ---
 def check_password():
@@ -23,8 +23,9 @@ def check_password():
 
 if check_password():
     
-    # --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS) ---
+    # --- 3. BASE DE DATOS MAESTRA (ACTIVOS VIVOS ÚNICAMENTE) ---
     def cargar_datos_maestros():
+        # JPM ya no está en esta lista, por lo que no aparecerá en el gráfico de activos vivos
         return [
             # ACCIONES
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR"},
@@ -47,7 +48,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # --- 4. DIARIO DE OPERACIONES (21 MOVIMIENTOS HISTÓRICOS) ---
+    # --- 4. DIARIO DE OPERACIONES (RECONSTRUCCIÓN HISTÓRICA) ---
     def cargar_diario_operaciones():
         return [
             {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Acción": "Suscripción", "Importe": 63822.16, "Detalle": "Compra inicial fondo monetario"},
@@ -74,8 +75,8 @@ if check_password():
             {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Acción": "Venta Total", "Importe": -556.32, "Detalle": "Cierre posición. Capital recuperado: 9.443,64 €"}
         ]
 
-    # Gestión persistencia
-    ARCHIVO_CSV = "cartera_v43.csv"
+    # Gestión de persistencia (Usamos v44 para asegurar que los datos antiguos de JPM se limpien)
+    ARCHIVO_CSV = "cartera_v44.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
@@ -97,96 +98,100 @@ if check_password():
         if st.button("🔄 Sincronizar Bolsa"):
             try:
                 rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-                st.session_state.rate_fmt = rate
+                st.session_state.rate_now = rate
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
                         st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.rerun()
-            except: st.error("Fallo de conexión.")
+            except: st.error("Error de conexión.")
+        
+        if st.button("🚨 Reiniciar"):
+            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.rerun()
 
     # --- 6. PROCESAMIENTO ---
-    rt = getattr(st.session_state, 'rate_fmt', 1.09)
+    curr_rate = getattr(st.session_state, 'rate_now', 1.09)
     df = st.session_state.df_cartera.copy()
-    df['Valor_Actual'] = df['P_Act'] * df['Cant']
-    df['Beneficio_EUR'] = df['Valor_Actual'] - df['Coste']
-    df['Rentabilidad'] = (df['Beneficio_EUR'] / df['Coste'] * 100).fillna(0)
+    df['Valor Mercado'] = df['P_Act'] * df['Cant']
+    df['Beneficio (€)'] = df['Valor Mercado'] - df['Coste']
+    df['Rentabilidad %'] = (df['Beneficio (€)'] / df['Coste'] * 100).fillna(0)
 
     # --- 7. INTERFAZ ---
-    st.title("🏦 Panel de Control Patrimonial")
+    st.title("🏦 Cartera Agirre & Uranga")
     
     c1, c2, c3 = st.columns(3)
-    b_acc = df[df['Tipo'] == 'Acción']['Beneficio_EUR'].sum()
-    b_fon = df[df['Tipo'] == 'Fondo']['Beneficio_EUR'].sum()
-    b_tot = df['Beneficio_EUR'].sum()
+    b_acc = df[df['Tipo'] == 'Acción']['Beneficio (€)'].sum()
+    b_fon = df[df['Tipo'] == 'Fondo']['Beneficio (€)'].sum()
+    b_tot = df['Beneficio (€)'].sum()
 
-    c1.metric("Beneficio Acciones", f"{b_acc:,.2f} € ({b_acc*rt:,.2f} $)")
+    c1.metric("Beneficio Acciones", f"{b_acc:,.2f} € ({b_acc*curr_rate:,.2f} $)")
     c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €")
-    c3.metric("Beneficio TOTAL VIVO", f"{b_tot:,.2f} € ({b_tot*rt:,.2f} $)")
+    c3.metric("Beneficio TOTAL VIVO", f"{b_tot:,.2f} € ({b_tot*curr_rate:,.2f} $)")
     st.divider()
 
-    def fmt_moneda(v, mon, d=2):
-        if mon == "USD": return f"{v:,.{d}f} € ({v*rt:,.2f} $)"
-        return f"{v:,.{d}f} €"
+    def fmt_bi(val_eur, moneda, dec=2):
+        if moneda == "USD":
+            return f"{val_eur:,.{dec}f} € ({val_eur*curr_rate:,.2f} $)"
+        return f"{val_eur:,.{dec}f} €"
 
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
         
         # TABLA RESUMEN
-        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','Beneficio_EUR':'sum', 'P_Act': 'first'}).reset_index()
-        res['Rent. %'] = (res['Beneficio_EUR'] / res['Coste'] * 100)
+        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','Beneficio (€)':'sum', 'P_Act': 'first'}).reset_index()
+        res['Rentabilidad %'] = (res['Beneficio (€)'] / res['Coste'] * 100)
         
-        # Nombres Sencillos para las columnas
-        res = res.rename(columns={
-            'Cant': 'Cantidad / Part.',
-            'Coste': 'Dinero Invertido',
-            'Valor_Actual': 'Valor Mercado',
-            'P_Act': 'Precio Actual',
-            'Rent. %': 'Rentabilidad %'
-        })
-        
-        res['Precio'] = res.apply(lambda r: fmt_moneda(r['Precio Actual'], r['Moneda'], 4), axis=1)
-        res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_moneda(r['Beneficio_EUR'], r['Moneda']), axis=1)
+        # Formateo selectivo
+        res['Precio'] = res.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
+        res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_bi(r['Beneficio (€)'], r['Moneda']), axis=1)
         
         st.subheader(f"📊 Situación Actual ({titulo})")
         
         if filtro == "Fondo":
             st.warning("💡 **MODO EDICIÓN:** Haz doble clic en la casilla **'Precio Actual'** para actualizar el valor oficial del banco.")
+            # Renombramos para el editor
+            res_editable = res.rename(columns={'P_Act': 'Precio Actual', 'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido'})
             cols_fondo = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
+            
             edited = st.data_editor(
-                res[cols_fondo].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                res_editable[cols_fondo].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
                 use_container_width=True,
                 disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'],
                 key=f"ed_{filtro}"
             )
+            # Guardamos cambios en el dataframe maestro
             for i, row in edited.iterrows():
                 st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
+            res_show = res.rename(columns={'Cant': 'Cantidad / Part.', 'Coste': 'Dinero Invertido'})
             cols_accion = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
-            st.dataframe(res[cols_accion].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
+            st.dataframe(res_show[cols_accion].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
 
         # DESGLOSE
         st.subheader(f"📜 Detalle de Compras ({titulo})")
         for n in df_sub['Nombre'].unique():
             compras = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
-            compras['P_Fmt'] = compras.apply(lambda r: fmt_moneda(r['P_Act'], r['Moneda'], 4), axis=1)
-            compras['B_Fmt'] = compras.apply(lambda r: fmt_moneda(r['Beneficio_EUR'], r['Moneda']), axis=1)
+            compras['P_Fmt'] = compras.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
+            compras['B_Fmt'] = compras.apply(lambda r: fmt_bi(r['Beneficio (€)'], r['Moneda']), axis=1)
             with st.expander(f"Ver historial: {n}"):
-                st.table(compras[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad']].rename(columns={'Cant':'Cant','Coste':'Invertido','P_Fmt':'Precio','B_Fmt':'Beneficio','Rentabilidad':'Rent %'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Cant":"{:.4f}","Invertido":"{:.2f} €","Rent %":"{:.2f}%"}))
+                st.table(compras[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad %']].rename(columns={'Cant':'Cant','Coste':'Invertido','P_Fmt':'Precio','B_Fmt':'Beneficio'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Cant":"{:.4f}","Invertido":"{:.2f} €","Rentabilidad %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 8. DIARIO COMPLETO ---
+    # --- 8. DIARIO HISTÓRICO ---
     st.divider()
     st.header("📜 Diario Histórico de Operaciones")
-    st.info("Rastro completo de vuestra evolución financiera (21 movimientos).")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True)
 
+    # --- 9. GRÁFICO CIRCULAR AUTOMÁTICO ---
     st.divider()
-    st.plotly_chart(px.pie(df, values='Valor_Actual', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
+    # El gráfico usa el dataframe 'df' que se actualiza cada vez que hay un cambio
+    st.plotly_chart(px.pie(df, values='Valor Mercado', names='Nombre', title="Distribución de Activos Vivos", hole=0.4), use_container_width=True)
