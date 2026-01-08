@@ -3,23 +3,56 @@ import pandas as pd
 import yfinance as yf
 import plotly.express as px
 from datetime import datetime
+# --- 6. BARRA LATERAL (CORREGIDA) ---
+    with st.sidebar:
+        st.header("⚙️ Gestión")
+        if st.button("🔄 Sincronizar Bolsa"):
+            success_count = 0
+            fail_tickers = []
+            
+            try:
+                # 1. Intentar obtener el tipo de cambio primero
+                exchange_data = yf.Ticker("EURUSD=X").history(period="1d")
+                if not exchange_data.empty:
+                    rate = exchange_data["Close"].iloc[-1]
+                    st.session_state.rate_aguirre = rate
+                else:
+                    rate = getattr(st.session_state, 'rate_aguirre', 1.09)
+                
+                # 2. Sincronizar cada acción de forma individual
+                for i, row in st.session_state.df_cartera.iterrows():
+                    if row['Tipo'] == "Acción":
+                        try:
+                            ticker_query = yf.Ticker(row['Ticker']).history(period="1d")
+                            if not ticker_query.empty:
+                                p_raw = ticker_query["Close"].iloc[-1]
+                                # Convertir si es USD
+                                p_final = p_raw / rate if row['Moneda'] == "USD" else p_raw
+                                st.session_state.df_cartera.at[i, 'P_Act'] = p_final
+                                success_count += 1
+                            else:
+                                fail_tickers.append(row['Ticker'])
+                        except:
+                            fail_tickers.append(row['Ticker'])
+                
+                # 3. Guardar cambios
+                st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                
+                # 4. Feedback al usuario en lugar de un error genérico
+                if fail_tickers:
+                    st.warning(f"⚠️ Actualizadas {success_count} posiciones. Fallaron: {', '.join(set(fail_tickers))}")
+                else:
+                    st.success(f"✅ ¡Todo actualizado! ({success_count} acciones)")
+                
+                st.rerun()
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Cartera Agirre & Uranga", layout="wide", page_icon="📈")
-
-# --- 2. SISTEMA DE SEGURIDAD ---
-def check_password():
-    def password_entered():
-        if st.session_state["password"] == "1234":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
-    if "password_correct" not in st.session_state:
-        st.title("🔐 Acceso Privado")
-        st.text_input("Introduce la clave familiar:", type="password", on_change=password_entered, key="password")
-        return False
-    return True
+            except Exception as e:
+                st.error(f"Error crítico: {e}")
+        
+        if st.button("🚨 Reiniciar Datos"):
+            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.rerun()
 
 if check_password():
     
