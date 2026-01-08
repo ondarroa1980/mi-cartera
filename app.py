@@ -163,21 +163,23 @@ if check_password():
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
     df_v = df_v[df_v['Nombre'] != "JPM US Short Duration"]
-    df_v['Val_Eur'] = df_v['P_Act'] * df_v['Cant']
-    df_v['Ben_Eur'] = df_v['Val_Eur'] - df_v['Coste']
-    df_v['Rent_Pct'] = (df_v['Ben_Eur'] / df_v['Coste'] * 100)
+    
+    # Nombres humanos para las columnas internas de cálculo
+    df_v['Valor Mercado'] = df_v['P_Act'] * df_v['Cant']
+    df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
+    df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
     # --- 8. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
     
-    t_inv = df_v['Coste'].sum()
-    t_val = df_v['Val_Eur'].sum()
-    t_ben = t_val - t_inv
+    inv_total = df_v['Coste'].sum()
+    val_total = df_v['Valor Mercado'].sum()
+    ben_total = val_total - inv_total
     
     c1, c2, c3 = st.columns(3)
-    c1.metric("Dinero Invertido (Vivos)", f"{t_inv:,.2f} €")
-    c2.metric("Valor Actual Cartera", f"{t_val:,.2f} €")
-    c3.metric("Beneficio TOTAL VIVO", f"{t_ben:,.2f} €", f"{(t_ben/t_inv*100):.2f}%")
+    c1.metric("Dinero Invertido (Vivos)", f"{inv_total:,.2f} €")
+    c2.metric("Valor Actual Cartera", f"{val_total:,.2f} €")
+    c3.metric("Beneficio TOTAL VIVO", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%")
     st.divider()
 
     # --- 9. TABLAS DE POSICIONES ---
@@ -185,27 +187,42 @@ if check_password():
         st.header(f"💼 {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Val_Eur':'sum','P_Act':'first', 'Ben_Eur':'sum'}).reset_index()
-        res['Rent_Pct'] = (res['Ben_Eur'] / res['Coste'] * 100)
-        res['Precio'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-        res['Beneficio'] = res.apply(lambda x: fmt_dual(x['Ben_Eur'], x['Moneda'], rt), axis=1)
+        # Agregado para la tabla principal con nombres humanos
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum'}).reset_index()
+        res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
+        res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+        res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         
+        # Renombrar columnas para la visualización final
+        res_display = res.rename(columns={
+            'Cant': 'Cantidad / Part.',
+            'Coste': 'Inversión Total',
+            'Valor Mercado': 'Valor Actual (€)'
+        })
+
         st.dataframe(
-            res[['Broker', 'Nombre', 'Cant', 'Coste', 'Val_Eur', 'Precio', 'Beneficio', 'Rent_Pct']]
-            .style.applymap(resaltar_beneficio, subset=['Rent_Pct'])
-            .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Val_Eur":"{:.2f} €","Rent_Pct":"{:.2f}%"}),
+            res_display[['Broker', 'Nombre', 'Cantidad / Part.', 'Inversión Total', 'Valor Actual (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %']]
+            .style.applymap(resaltar_beneficio, subset=['Rentabilidad %'])
+            .format({"Cantidad / Part.":"{:.4f}","Inversión Total":"{:.2f} €","Valor Actual (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
             use_container_width=True
         )
 
         for n in sub['Nombre'].unique():
             with st.expander(f"Detalle de compras: {n}"):
                 det = sub[sub['Nombre'] == n].copy()
-                det['P_Visual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-                det['B_Visual'] = det.apply(lambda x: fmt_dual(x['Ben_Eur'], x['Moneda'], rt), axis=1)
+                det['Precio Visual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+                det['Beneficio Visual'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+                
+                det_display = det.rename(columns={
+                    'Cant': 'Cantidad',
+                    'Coste': 'Inversión',
+                    'Valor Mercado': 'Valor Mercado (€)'
+                })
+
                 st.dataframe(
-                    det[['Fecha', 'Cant', 'Coste', 'P_Visual', 'Val_Eur', 'B_Visual', 'Rent_Pct']]
-                    .style.applymap(resaltar_beneficio, subset=['Rent_Pct'])
-                    .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Val_Eur":"{:.2f} €","Rent_Pct":"{:.2f}%"}),
+                    det_display[['Fecha', 'Cantidad', 'Inversión', 'Precio Visual', 'Valor Mercado (€)', 'Beneficio Visual', 'Rentabilidad %']]
+                    .style.applymap(resaltar_beneficio, subset=['Rentabilidad %'])
+                    .format({"Cantidad":"{:.4f}","Inversión":"{:.2f} €","Valor Mercado (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
                     use_container_width=True, hide_index=True
                 )
 
@@ -214,7 +231,7 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo")
     st.divider()
 
-    # --- 10. DIARIO HISTÓRICO (RECUPERADO) ---
+    # --- 10. DIARIO HISTÓRICO ---
     st.header("📜 Diario Histórico de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     st.dataframe(
@@ -260,10 +277,10 @@ if check_password():
 
     # --- 12. GRÁFICAS (AL FINAL) ---
     st.header("📊 Análisis Visual de la Cartera")
-    st.plotly_chart(px.pie(df_v, values='Val_Eur', names='Nombre', title="Distribución Global de Activos (Toda la Cartera)", hole=0.4), use_container_width=True)
+    st.plotly_chart(px.pie(df_v, values='Valor Mercado', names='Nombre', title="Distribución Global de Activos (Toda la Cartera)", hole=0.4), use_container_width=True)
     
     g1, g2 = st.columns(2)
     with g1:
-        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Val_Eur', names='Nombre', title="Pesos en Acciones", hole=0.3), use_container_width=True)
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.3), use_container_width=True)
     with g2:
-        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Val_Eur', names='Nombre', title="Pesos en Fondos", hole=0.3), use_container_width=True)
+        st.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.3), use_container_width=True)
