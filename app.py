@@ -5,7 +5,7 @@ import plotly.express as px
 from datetime import datetime
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Nuestra Cartera Familiar - Historial Total", layout="wide")
+st.set_page_config(page_title="Nuestra Cartera Familiar - v43", layout="wide")
 
 # --- 2. SISTEMA DE SEGURIDAD ---
 def check_password():
@@ -47,45 +47,42 @@ if check_password():
             {"Fecha": "2025-11-05", "Tipo": "Fondo", "Broker": "MyInvestor", "Ticker": "0P00008M90.F", "Nombre": "Pictet China Index", "Cant": 6.6, "Coste": 999.98, "P_Act": 151.51, "Moneda": "EUR"}
         ]
 
-    # --- 4. DIARIO DE OPERACIONES (RECONSTRUCCIÓN TOTAL) ---
+    # --- 4. DIARIO DE OPERACIONES (21 MOVIMIENTOS HISTÓRICOS) ---
     def cargar_diario_operaciones():
         return [
-            # 2024
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Accion": "Suscripción", "Importe": 63822.16, "Detalle": "Compra inicial fondo monetario"},
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Accion": "Traspaso Neto", "Importe": 2230.00, "Detalle": "Plusvalía consolidada histórica"},
-            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Accion": "Suscripción", "Importe": 7000.00, "Detalle": "Entrada en deuda corporativa nórdica"},
-            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Accion": "Suscripción", "Importe": 3000.00, "Detalle": "Ampliación posición Evli"},
-            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Accion": "Suscripción", "Importe": 9999.96, "Detalle": "Compra inicial fondo JPM"},
-            # 2025
-            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 5000.00, "Detalle": "Entrada fondo Numantia"},
-            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Accion": "Suscripción", "Importe": 5016.20, "Detalle": "Compra inicial Fidelity MSCI World"},
-            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Accion": "Compra", "Importe": 1867.84, "Detalle": "Inversión en sector salud (7 acciones)"},
-            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 1000.00, "Detalle": "Ampliación posición"},
-            {"Fecha": "2025-09-16", "Producto": "JD.com", "Accion": "Compra", "Importe": 1710.79, "Detalle": "Inversión en tech China (58 acciones)"},
-            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Accion": "Compra", "Importe": 1043.75, "Detalle": "Inversión inicial (1580 acciones)"},
-            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 451.82, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Accion": "Compra", "Importe": 1018.05, "Detalle": "Ampliación posición (1290 acciones)"},
-            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Accion": "Suscripción", "Importe": 999.98, "Detalle": "Inversión indexada China"},
-            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Accion": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            # 2026
-            {"Fecha": "2026-01-05", "Producto": "Amper", "Accion": "Compra", "Importe": 2023.79, "Detalle": "Especulación small-cap (10400 acciones)"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Accion": "Venta Total", "Importe": -556.32, "Detalle": "Cierre posición. Capital recuperado: 9.443,64 €"}
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Acción": "Suscripción", "Importe": 63822.16, "Detalle": "Compra inicial fondo monetario"},
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Acción": "Traspaso Neto", "Importe": 2230.00, "Detalle": "Plusvalía consolidada histórica"},
+            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Acción": "Suscripción", "Importe": 7000.00, "Detalle": "Entrada en deuda corporativa nórdica"},
+            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Acción": "Suscripción", "Importe": 3000.00, "Detalle": "Ampliación posición Evli"},
+            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Acción": "Suscripción", "Importe": 9999.96, "Detalle": "Compra inicial fondo JPM"},
+            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 5000.00, "Detalle": "Entrada fondo Numantia"},
+            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Acción": "Suscripción", "Importe": 5016.20, "Detalle": "Compra inicial Fidelity MSCI World"},
+            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Acción": "Compra", "Importe": 1867.84, "Detalle": "Inversión en sector salud (7 acciones)"},
+            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 1000.00, "Detalle": "Ampliación posición"},
+            {"Fecha": "2025-09-16", "Producto": "JD.com", "Acción": "Compra", "Importe": 1710.79, "Detalle": "Inversión en tech China (58 acciones)"},
+            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Acción": "Compra", "Importe": 1043.75, "Detalle": "Inversión inicial (1580 acciones)"},
+            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 451.82, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Acción": "Compra", "Importe": 1018.05, "Detalle": "Ampliación posición (1290 acciones)"},
+            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Acción": "Suscripción", "Importe": 999.98, "Detalle": "Inversión indexada China"},
+            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Acción": "Suscripción", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2026-01-05", "Producto": "Amper", "Acción": "Compra", "Importe": 2023.79, "Detalle": "Especulación small-cap (10400 acciones)"},
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Acción": "Venta Total", "Importe": -556.32, "Detalle": "Cierre posición. Capital recuperado: 9.443,64 €"}
         ]
 
-    # Gestión de archivos
-    ARCHIVO_CSV = "cartera_v42.csv"
+    # Gestión persistencia
+    ARCHIVO_CSV = "cartera_v43.csv"
     if 'df_cartera' not in st.session_state:
         try: st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
 
-    def resaltar_gp(val):
+    def resaltar_beneficio(val):
         if isinstance(val, str) and "€" in val:
             try:
                 num = float(val.split("€")[0].replace(",", "").strip())
@@ -100,81 +97,95 @@ if check_password():
         if st.button("🔄 Sincronizar Bolsa"):
             try:
                 rate = yf.Ticker("EURUSD=X").history(period="1d")["Close"].iloc[-1]
-                st.session_state.rate_now = rate
+                st.session_state.rate_fmt = rate
                 for i, row in st.session_state.df_cartera.iterrows():
                     if row['Tipo'] == "Acción":
                         p_raw = yf.Ticker(row['Ticker']).history(period="1d")["Close"].iloc[-1]
                         st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                 st.rerun()
-            except: st.error("Error de conexión.")
-        
-        if st.button("🚨 Reiniciar"):
-            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.rerun()
+            except: st.error("Fallo de conexión.")
 
     # --- 6. PROCESAMIENTO ---
-    curr_rate = getattr(st.session_state, 'rate_now', 1.09)
+    rt = getattr(st.session_state, 'rate_fmt', 1.09)
     df = st.session_state.df_cartera.copy()
     df['Valor_Actual'] = df['P_Act'] * df['Cant']
-    df['GP_EUR'] = df['Valor_Actual'] - df['Coste']
-    df['Rent. %'] = (df['GP_EUR'] / df['Coste'] * 100).fillna(0)
+    df['Beneficio_EUR'] = df['Valor_Actual'] - df['Coste']
+    df['Rentabilidad'] = (df['Beneficio_EUR'] / df['Coste'] * 100).fillna(0)
 
     # --- 7. INTERFAZ ---
-    st.title("🏦 Cuadro de Mando Patrimonial")
+    st.title("🏦 Panel de Control Patrimonial")
     
     c1, c2, c3 = st.columns(3)
-    gp_acc = df[df['Tipo'] == 'Acción']['GP_EUR'].sum()
-    gp_fon = df[df['Tipo'] == 'Fondo']['GP_EUR'].sum()
-    gp_tot = df['GP_EUR'].sum()
+    b_acc = df[df['Tipo'] == 'Acción']['Beneficio_EUR'].sum()
+    b_fon = df[df['Tipo'] == 'Fondo']['Beneficio_EUR'].sum()
+    b_tot = df['Beneficio_EUR'].sum()
 
-    c1.metric("G/P Acciones", f"{gp_acc:,.2f} € ({gp_acc*curr_rate:,.2f} $)")
-    c2.metric("G/P Fondos", f"{gp_fon:,.2f} €")
-    c3.metric("G/P TOTAL VIVO", f"{gp_tot:,.2f} € ({gp_tot*curr_rate:,.2f} $)")
+    c1.metric("Beneficio Acciones", f"{b_acc:,.2f} € ({b_acc*rt:,.2f} $)")
+    c2.metric("Beneficio Fondos", f"{b_fon:,.2f} €")
+    c3.metric("Beneficio TOTAL VIVO", f"{b_tot:,.2f} € ({b_tot*rt:,.2f} $)")
     st.divider()
 
-    def fmt_bi(val_eur, moneda, dec=2):
-        if moneda == "USD":
-            return f"{val_eur:,.{dec}f} € ({val_eur*curr_rate:,.2f} $)"
-        return f"{val_eur:,.{dec}f} €"
+    def fmt_moneda(v, mon, d=2):
+        if mon == "USD": return f"{v:,.{d}f} € ({v*rt:,.2f} $)"
+        return f"{v:,.{d}f} €"
 
     def mostrar_seccion(titulo, filtro):
         st.header(f"💼 {titulo}")
         df_sub = df[df['Tipo'] == filtro].copy()
-        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','GP_EUR':'sum', 'P_Act': 'first'}).reset_index()
-        res['Rent. %'] = (res['GP_EUR'] / res['Coste'] * 100)
-        res['P_Act_Fmt'] = res.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
-        res['Ganancia_Fmt'] = res.apply(lambda r: fmt_bi(r['GP_EUR'], r['Moneda']), axis=1)
+        
+        # TABLA RESUMEN
+        res = df_sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor_Actual':'sum','Beneficio_EUR':'sum', 'P_Act': 'first'}).reset_index()
+        res['Rent. %'] = (res['Beneficio_EUR'] / res['Coste'] * 100)
+        
+        # Nombres Sencillos para las columnas
+        res = res.rename(columns={
+            'Cant': 'Cantidad / Part.',
+            'Coste': 'Dinero Invertido',
+            'Valor_Actual': 'Valor Mercado',
+            'P_Act': 'Precio Actual',
+            'Rent. %': 'Rentabilidad %'
+        })
+        
+        res['Precio'] = res.apply(lambda r: fmt_moneda(r['Precio Actual'], r['Moneda'], 4), axis=1)
+        res['Beneficio (EUR/USD)'] = res.apply(lambda r: fmt_moneda(r['Beneficio_EUR'], r['Moneda']), axis=1)
         
         st.subheader(f"📊 Situación Actual ({titulo})")
+        
         if filtro == "Fondo":
-            st.warning("💡 **MODO EDICIÓN:** Doble clic en 'P_Act' para actualizar precio.")
-            edited = st.data_editor(res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act', 'Ganancia_Fmt', 'Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True, disabled=['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'Ganancia_Fmt', 'Rent. %'], key=f"ed_{filtro}")
+            st.warning("💡 **MODO EDICIÓN:** Haz doble clic en la casilla **'Precio Actual'** para actualizar el valor oficial del banco.")
+            cols_fondo = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio Actual', 'Beneficio (EUR/USD)', 'Rentabilidad %']
+            edited = st.data_editor(
+                res[cols_fondo].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                use_container_width=True,
+                disabled=['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Beneficio (EUR/USD)', 'Rentabilidad %'],
+                key=f"ed_{filtro}"
+            )
             for i, row in edited.iterrows():
-                st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
+                st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['Precio Actual']
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
         else:
-            st.dataframe(res[['Broker', 'Nombre', 'Cant', 'Coste', 'Valor_Actual', 'P_Act_Fmt', 'Ganancia_Fmt', 'Rent. %']].style.applymap(resaltar_gp, subset=['Ganancia_Fmt']).format({"Cant":"{:.2f}","Coste":"{:.2f} €","Valor_Actual":"{:.2f} €","Rent. %":"{:.2f}%"}), use_container_width=True)
+            cols_accion = ['Broker', 'Nombre', 'Cantidad / Part.', 'Dinero Invertido', 'Valor Mercado', 'Precio', 'Beneficio (EUR/USD)', 'Rentabilidad %']
+            st.dataframe(res[cols_accion].style.applymap(resaltar_beneficio, subset=['Beneficio (EUR/USD)']).format({"Cantidad / Part.":"{:.2f}","Dinero Invertido":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}), use_container_width=True)
 
+        # DESGLOSE
         st.subheader(f"📜 Detalle de Compras ({titulo})")
-        for nombre in df_sub['Nombre'].unique():
-            compras = df_sub[df_sub['Nombre'] == nombre].sort_values(by='Fecha', ascending=False).copy()
-            compras['P_Fmt'] = compras.apply(lambda r: fmt_bi(r['P_Act'], r['Moneda'], 4), axis=1)
-            compras['G_Fmt'] = compras.apply(lambda r: fmt_bi(r['GP_EUR'], r['Moneda']), axis=1)
-            with st.expander(f"Ver historial: {nombre}"):
-                st.table(compras[['Fecha','Cant','Coste','P_Fmt','G_Fmt','Rent. %']].style.applymap(resaltar_gp, subset=['G_Fmt']).format({"Cant":"{:.4f}","Coste":"{:.2f} €","Rent. %":"{:.2f}%"}))
+        for n in df_sub['Nombre'].unique():
+            compras = df_sub[df_sub['Nombre'] == n].sort_values(by='Fecha', ascending=False).copy()
+            compras['P_Fmt'] = compras.apply(lambda r: fmt_moneda(r['P_Act'], r['Moneda'], 4), axis=1)
+            compras['B_Fmt'] = compras.apply(lambda r: fmt_moneda(r['Beneficio_EUR'], r['Moneda']), axis=1)
+            with st.expander(f"Ver historial: {n}"):
+                st.table(compras[['Fecha','Cant','Coste','P_Fmt','B_Fmt','Rentabilidad']].rename(columns={'Cant':'Cant','Coste':'Invertido','P_Fmt':'Precio','B_Fmt':'Beneficio','Rentabilidad':'Rent %'}).style.applymap(resaltar_beneficio, subset=['Beneficio']).format({"Cant":"{:.4f}","Invertido":"{:.2f} €","Rent %":"{:.2f}%"}))
 
     mostrar_seccion("Acciones", "Acción")
     st.divider()
     mostrar_seccion("Fondos de Inversión", "Fondo")
 
-    # --- 8. DIARIO DE OPERACIONES REALIZADAS (HISTORIAL TOTAL) ---
+    # --- 8. DIARIO COMPLETO ---
     st.divider()
-    st.header("📜 Diario de Operaciones Realizadas")
-    st.info("Listado cronológico de todas las compras, suscripciones y ventas de la familia.")
+    st.header("📜 Diario Histórico de Operaciones")
+    st.info("Rastro completo de vuestra evolución financiera (21 movimientos).")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    
     st.dataframe(df_ops.style.applymap(lambda x: 'background-color: #f8d7da' if isinstance(x, (int, float)) and x < 0 else 'background-color: #d4edda' if isinstance(x, (int, float)) and x > 0 else None, subset=['Importe']).format({"Importe": "{:,.2f} €"}), use_container_width=True)
 
     st.divider()
