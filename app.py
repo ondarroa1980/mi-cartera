@@ -53,6 +53,7 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
+                # Limpiamos el string para obtener el número (ej: "120.50 €" -> 120.50)
                 clean_val = val.split(' ')[0].replace(',', '')
                 num = float(clean_val)
             elif isinstance(val, (int, float)):
@@ -123,28 +124,8 @@ if check_password():
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 10, 4), "Importe": 600.0},
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 1, 8), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 3, 3), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 4, 9), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 4, 30), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor", "Fecha": date(2025, 8, 14), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
-            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
-            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 21), "Importe": 1000.0},
-            {"Titular": "Ander", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
-            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 12, 31), "Importe": 500.0},
             {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 30000.0},
             {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
-            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 11, 21), "Importe": 3000.0},
-            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 1, 22), "Importe": 5000.0},
-            {"Titular": "Xabat", "Broker": "MyInvestor", "Fecha": date(2025, 2, 7), "Importe": 2500.0},
-            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 3, 3), "Importe": 500.0},
-            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
-            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 8, 30), "Importe": 1000.0},
-            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 9, 17), "Importe": 1000.0},
-            {"Titular": "Xabat", "Broker": "MyInvestor / Acción", "Fecha": date(2025, 10, 9), "Importe": 500.0},
-            {"Titular": "Xabat", "Broker": "MyInvestor / Fondo", "Fecha": date(2025, 11, 1), "Importe": 500.0},
         ]
 
     # --- 6. GESTIÓN DE ARCHIVOS ---
@@ -190,13 +171,6 @@ if check_password():
                 st.toast("Precios actualizados", icon="✅")
                 st.rerun()
             except: st.error("Error al sincronizar.")
-        
-        if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
-            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
-            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
-            st.rerun()
 
     # --- 8. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
@@ -209,7 +183,6 @@ if check_password():
 
     # --- 9. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
-    st.markdown("Gestión de activos familiares en tiempo real")
     
     inv_total = df_v['Coste'].sum()
     val_total = df_v['Valor Mercado'].sum()
@@ -227,67 +200,61 @@ if check_password():
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregamos Ult_Val a la agrupación
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val': 'first'}).reset_index()
+        # Agregación común
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({
+            'Cant':'sum',
+            'Coste':'sum',
+            'Valor Mercado':'sum',
+            'P_Act':'first', 
+            'Beneficio':'sum', 
+            'Ult_Val': 'first'
+        }).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
+        res['Beneficio (€)'] = res['Beneficio'].apply(lambda x: f"{x:,.2f} €")
+        res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
         
-        if tipo_filtro == "Acción":
-            res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-            res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
-            res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
-            with st.container(border=True):
-                st.dataframe(
-                    res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad %', 'Última Val.']]
-                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
-                    .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
-                    use_container_width=True, hide_index=True
-                )
-        else:
-            # PARA FONDOS: HACER EL PRECIO EDITABLE
-            # No formateamos con fmt_dual para permitir la edición numérica
-            res_edit = res.copy()
-            res_edit['Beneficio (€)'] = res_edit['Beneficio']
-            res_edit = res_edit.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'P_Act': 'Precio Actual', 'Ult_Val': 'Última Val.'})
-            
-            with st.container(border=True):
+        # LÓGICA ESPECÍFICA PARA FONDOS (EDICIÓN)
+        if tipo_filtro == "Fondo":
+            with st.expander("✏️ Actualizar Precios de Fondos"):
+                res_edit = res[['Nombre', 'P_Act']].copy()
                 edited_df = st.data_editor(
-                    res_edit[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€)', 'Rentabilidad %', 'Última Val.']],
-                    column_config={
-                        "Precio Actual": st.column_config.NumberColumn("Precio Actual", format="%.4f"),
-                        "Broker": st.column_config.Column(disabled=True),
-                        "Nombre": st.column_config.Column(disabled=True),
-                        "Cant/Part.": st.column_config.Column(disabled=True),
-                        "Inversión": st.column_config.Column(disabled=True),
-                        "Valor (€)": st.column_config.Column(disabled=True),
-                        "Beneficio (€)": st.column_config.Column(disabled=True),
-                        "Rentabilidad %": st.column_config.Column(disabled=True),
-                        "Última Val.": st.column_config.Column(disabled=True),
-                    },
-                    use_container_width=True, hide_index=True, key=f"editor_{tipo_filtro}"
+                    res_edit,
+                    column_config={"P_Act": st.column_config.NumberColumn("Precio Actual", format="%.4f"), "Nombre": st.column_config.Column(disabled=True)},
+                    use_container_width=True, hide_index=True, key="fondos_editor"
                 )
-                
-                # Detectar cambios y actualizar base de datos
-                if not edited_df['Precio Actual'].equals(res_edit['Precio Actual']):
+                if not edited_df['P_Act'].equals(res_edit['P_Act']):
                     ahora = datetime.now().strftime("%d/%m/%Y %H:%M")
                     for idx, row in edited_df.iterrows():
-                        nombre_activo = row['Nombre']
-                        nuevo_precio = row['Precio Actual']
-                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_activo, 'P_Act'] = nuevo_precio
-                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == nombre_activo, 'Ult_Val'] = ahora
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'Ult_Val'] = ahora
                     st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                     st.rerun()
 
+        # VISTA DE TABLA (IGUAL PARA AMBOS, CON COLORES)
+        res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+        res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
+
+        with st.container(border=True):
+            st.dataframe(
+                res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€)', 'Rentabilidad (%)', 'Última Val.']]
+                .style.applymap(resaltar_beneficio, subset=['Beneficio (€)', 'Rentabilidad (%)'])
+                .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €"}),
+                use_container_width=True, hide_index=True
+            )
+
+        # DESGLOSE INDIVIDUAL (TAMBIÉN CON COLORES)
         with st.expander(f"Ver desglose de compras: {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
+                det['Beneficio (€)'] = det['Beneficio'].apply(lambda x: f"{x:,.2f} €")
+                det['Rentabilidad (%)'] = det['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
                 det['Precio Actual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
-                det['Beneficio (€/$)'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
                 st.write(f"**{n}**")
                 st.dataframe(
-                    det[['Fecha', 'Cant', 'Coste', 'Precio Actual', 'Valor Mercado', 'Beneficio (€/$)', 'Rentabilidad %', 'Ult_Val']]
+                    det[['Fecha', 'Cant', 'Coste', 'Precio Actual', 'Valor Mercado', 'Beneficio (€)', 'Rentabilidad (%)', 'Ult_Val']]
                     .rename(columns={'Ult_Val': 'Última Val.'})
-                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad %'])
-                    .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Valor Mercado":"{:.2f} €","Rentabilidad %":"{:.2f}%"}),
+                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€)', 'Rentabilidad (%)'])
+                    .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Valor Mercado":"{:.2f} €"}),
                     use_container_width=True, hide_index=True
                 )
 
@@ -305,26 +272,19 @@ if check_password():
     # --- 12. APORTACIONES FAMILIARES ---
     st.subheader("👥 Capital Aportado")
     df_ap = st.session_state.df_aportaciones.copy()
-    df_ap['Fecha'] = pd.to_datetime(df_ap['Fecha']).dt.date
-
     col_a, col_x = st.columns(2)
     with col_a:
         with st.container(border=True):
             st.markdown("#### 👨‍💼 ANDER")
             d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-            e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True,
-                                column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
-                                               "Fecha": st.column_config.DateColumn()})
+            e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
             total_a = e_a['Importe'].sum()
             st.caption(f"Total Ander: {total_a:,.2f} €")
-
     with col_x:
         with st.container(border=True):
             st.markdown("#### 👨‍💼 XABAT")
             d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-            e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True,
-                                column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
-                                               "Fecha": st.column_config.DateColumn()})
+            e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
             total_x = e_x['Importe'].sum()
             st.caption(f"Total Xabat: {total_x:,.2f} €")
 
@@ -341,16 +301,3 @@ if check_password():
             <span style='font-size: 32px; font-weight: 800;'>{total_a + total_x:,.2f} €</span>
         </div>
     """, unsafe_allow_html=True)
-    st.divider()
-
-    # --- 13. GRÁFICAS ---
-    st.subheader("📊 Análisis de Cartera")
-    tabs = st.tabs(["Distribución Global", "Por Activo"])
-    with tabs[0]:
-        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=px.colors.qualitative.Antique)
-        fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-        st.plotly_chart(fig, use_container_width=True)
-    with tabs[1]:
-        g1, g2 = st.columns(2)
-        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4), use_container_width=True)
-        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4), use_container_width=True)
