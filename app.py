@@ -73,8 +73,8 @@ st.markdown("""
         font-weight: 600;
     }
     
-    .pct-pos { color: #39FF14; } /* Verde Neón */
-    .pct-neg { color: #FF007F; } /* Rosa Neón */
+    .pct-pos { color: #4ade80; } /* Verde esmeralda */
+    .pct-neg { color: #f87171; } /* Rojo vivo */
 
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
@@ -106,11 +106,13 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
+                # Extraemos el número base antes de símbolos o paréntesis
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
                 num = float(val)
             
+            # Verde para >= 0 (incluye neutral), Rojo para negativos
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -122,7 +124,7 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 5. BASES DE DATOS (Mantenidas idénticas) ---
+    # --- 5. BASES DE DATOS (RESTAURACIÓN ESCRUPULOSA) ---
     def cargar_datos_maestros():
         f_ini = "08/01/2026 11:30"
         return [
@@ -167,7 +169,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento."}
         ]
 
     def cargar_datos_aportaciones():
@@ -244,7 +246,6 @@ if check_password():
                 st.rerun()
             except: st.error("Error al sincronizar.")
         
-        # BOTÓN DE RESETEO RECUPERADO
         if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
@@ -398,18 +399,18 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 13. GRÁFICAS (COLORES FLÚOR PERSONALIZADOS) ---
+    # --- 13. GRÁFICAS (COLORES VIVOS BÁSICOS) ---
     st.subheader("📊 Análisis de Cartera")
     
-    # Paleta de colores Neón/Flúor
-    fluor_colors = ['#39FF14', '#FF007F', '#00FFFF', '#FFFF00', '#FF6600', '#BC13FE', '#FF00FF', '#4D4DFF']
+    # Paleta cualitativa estándar de Plotly (viva pero profesional)
+    vivid_basic_colors = px.colors.qualitative.Plotly 
     
     tabs = st.tabs(["Distribución Global", "Por Activo"])
     with tabs[0]:
-        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=fluor_colors)
+        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=vivid_basic_colors)
         fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
         st.plotly_chart(fig, use_container_width=True)
     with tabs[1]:
         g1, g2 = st.columns(2)
-        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4, color_discrete_sequence=fluor_colors), use_container_width=True)
-        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4, color_discrete_sequence=fluor_colors), use_container_width=True)
+        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4, color_discrete_sequence=vivid_basic_colors), use_container_width=True)
+        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4, color_discrete_sequence=vivid_basic_colors), use_container_width=True)
