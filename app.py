@@ -23,6 +23,44 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
+        height: 125px; /* Altura fija para sincronizar */
+    }
+    /* Estilo para la tarjeta destacada de Beneficio */
+    .highlight-card {
+        background-color: #1e3a8a; /* Azul cobalto oscuro */
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 125px;
+    }
+    .highlight-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #bfdbfe;
+    }
+    .highlight-values {
+        display: flex;
+        align-items: baseline;
+        gap: 15px;
+    }
+    .highlight-main {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .highlight-pct {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #4ade80; /* Verde brillante */
+    }
+    .highlight-pct-neg {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #f87171; /* Rojo brillante */
     }
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
@@ -54,13 +92,10 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Extraemos el número base antes de símbolos o paréntesis
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
                 num = float(val)
-            
-            # Verde para >= 0 (incluye el 0.00), Rojo para negativos
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -117,7 +152,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento."}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
         ]
 
     def cargar_datos_aportaciones():
@@ -210,19 +245,29 @@ if check_password():
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
-    # --- 9. DASHBOARD SUPERIOR ---
+    # --- 9. DASHBOARD SUPERIOR (REDISEÑADO) ---
     st.title("🏦 Cartera Agirre & Uranga")
-    st.markdown("Gestión de activos familiares en tiempo real")
     
     inv_total = df_v['Coste'].sum()
     val_total = df_v['Valor Mercado'].sum()
     ben_total = val_total - inv_total
+    rent_total = (ben_total / inv_total * 100 if inv_total > 0 else 0)
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Capital Invertido", f"{inv_total:,.2f} €")
     c2.metric("Valor de Mercado", f"{val_total:,.2f} €")
-    color_delta = "normal" if ben_total >= 0 else "inverse"
-    c3.metric("Beneficio Latente", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%", delta_color=color_delta)
+    
+    # Tarjeta Destacada de Beneficio
+    clase_pct = "highlight-pct" if rent_total >= 0 else "highlight-pct-neg"
+    st.markdown(f"""
+        <div class="highlight-card">
+            <div class="highlight-label">Beneficio Latente Total</div>
+            <div class="highlight-values">
+                <div class="highlight-main">{ben_total:,.2f} €</div>
+                <div class="{clase_pct}">{rent_total:+.2f}%</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     st.divider()
 
     # --- 10. TABLAS DE POSICIONES ---
@@ -230,13 +275,9 @@ if check_password():
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agrupación base para resumen
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({
-            'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val':'first'
-        }).reset_index()
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val':'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
 
-        # EDITOR PARA FONDOS (RECUPERADO)
         if tipo_filtro == "Fondo":
             with st.expander("✏️ Actualizar Precios de Fondos"):
                 res_edit = res[['Nombre', 'P_Act']].copy()
@@ -253,7 +294,6 @@ if check_password():
                     st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                     st.rerun()
 
-        # Formateo para tabla de visualización (colores aplicados)
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
