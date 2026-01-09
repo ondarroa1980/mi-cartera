@@ -13,55 +13,69 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. CSS PERSONALIZADO ---
+# --- 2. CSS PARA DISEÑO PROFESIONAL Y ARMONIZADO ---
 st.markdown("""
     <style>
     .main { background-color: #f9fafb; }
-    .stMetric {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border: 1px solid #f0f0f0;
-        height: 125px; /* Altura fija para sincronizar */
+    
+    /* Contenedor de tarjetas superiores */
+    .metric-container {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 25px;
     }
-    /* Estilo para la tarjeta destacada de Beneficio */
-    .highlight-card {
-        background-color: #1e3a8a; /* Azul cobalto oscuro */
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    
+    /* Estilo base para todas las tarjetas */
+    .custom-card {
+        flex: 1;
+        padding: 22px;
+        border-radius: 12px;
+        height: 140px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        height: 125px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        background-color: white;
     }
-    .highlight-label {
-        font-size: 0.9rem;
+    
+    /* Tarjeta destacada (Beneficio) */
+    .highlight-card {
+        background-color: #111827; /* Azul/Negro profesional */
+        color: white;
+        border: none;
+    }
+    
+    .card-label {
+        font-size: 0.85rem;
         font-weight: 500;
-        margin-bottom: 5px;
-        color: #bfdbfe;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        color: #6b7280;
     }
-    .highlight-values {
+    
+    .highlight-card .card-label { color: #9ca3af; }
+    
+    .card-value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: #111827;
         display: flex;
         align-items: baseline;
-        gap: 15px;
+        gap: 12px;
     }
-    .highlight-main {
-        font-size: 1.8rem;
-        font-weight: 700;
-    }
-    .highlight-pct {
-        font-size: 1.4rem;
+    
+    .highlight-card .card-value { color: white; }
+    
+    .pct-badge {
+        font-size: 1.3rem;
         font-weight: 600;
-        color: #4ade80; /* Verde brillante */
     }
-    .highlight-pct-neg {
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: #f87171; /* Rojo brillante */
-    }
+    
+    .pct-pos { color: #4ade80; }
+    .pct-neg { color: #f87171; }
+
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
     h1, h2, h3 { color: #111827; font-weight: 700 !important; }
@@ -92,10 +106,12 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
+                # Regex para extraer número ignorando símbolos, paréntesis y comas de miles
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
                 num = float(val)
+            
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -107,7 +123,7 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 5. BASES DE DATOS (RESTAURADAS COMPLETAMENTE) ---
+    # --- 5. BASES DE DATOS (INTEGRIDAD TOTAL) ---
     def cargar_datos_maestros():
         f_ini = "---"
         return [
@@ -245,7 +261,7 @@ if check_password():
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
-    # --- 9. DASHBOARD SUPERIOR (REDISEÑADO) ---
+    # --- 9. DASHBOARD SUPERIOR (REDiseñado Armónicamente) ---
     st.title("🏦 Cartera Agirre & Uranga")
     
     inv_total = df_v['Coste'].sum()
@@ -253,18 +269,25 @@ if check_password():
     ben_total = val_total - inv_total
     rent_total = (ben_total / inv_total * 100 if inv_total > 0 else 0)
     
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Capital Invertido", f"{inv_total:,.2f} €")
-    c2.metric("Valor de Mercado", f"{val_total:,.2f} €")
-    
-    # Tarjeta Destacada de Beneficio
-    clase_pct = "highlight-pct" if rent_total >= 0 else "highlight-pct-neg"
+    # Renderizado de métricas en una sola fila armonizada
     st.markdown(f"""
-        <div class="highlight-card">
-            <div class="highlight-label">Beneficio Latente Total</div>
-            <div class="highlight-values">
-                <div class="highlight-main">{ben_total:,.2f} €</div>
-                <div class="{clase_pct}">{rent_total:+.2f}%</div>
+        <div class="metric-container">
+            <div class="custom-card">
+                <div class="card-label">Capital Invertido</div>
+                <div class="card-value">{inv_total:,.2f} €</div>
+            </div>
+            <div class="custom-card">
+                <div class="card-label">Valor de Mercado</div>
+                <div class="card-value">{val_total:,.2f} €</div>
+            </div>
+            <div class="custom-card highlight-card">
+                <div class="card-label">Beneficio Latente Total</div>
+                <div class="card-value">
+                    {ben_total:,.2f} €
+                    <span class="pct-badge {"pct-pos" if rent_total >= 0 else "pct-neg"}">
+                        {rent_total:+.2f}%
+                    </span>
+                </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
