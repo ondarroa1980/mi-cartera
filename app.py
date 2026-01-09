@@ -49,19 +49,18 @@ def check_password():
 
 if check_password():
     
-    # --- 4. FUNCIÓN DE COLOR ULTRA-ROBUSTA ---
+    # --- 4. FUNCIÓN DE COLOR ROBUSTA (Cero incluido) ---
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Extraemos solo números, puntos y el signo menos para poder comparar
+                # Extraemos solo números y signos para comparar
                 clean_val = "".join(c for c in val if c.isdigit() or c in '.-').strip()
-                if not clean_val or clean_val == ".": return None
                 num = float(clean_val)
             elif isinstance(val, (int, float)):
                 num = val
             else: return None
             
-            # Verde para beneficios >= 0 (incluye el 0.00), Rojo para negativos
+            # Verde para >= 0 (incluye el 0.00), Rojo para negativos
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -118,7 +117,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento."}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
         ]
 
     def cargar_datos_aportaciones():
@@ -159,7 +158,7 @@ if check_password():
         try: 
             st.session_state.df_cartera = pd.read_csv(ARCHIVO_CSV)
             if 'Ult_Val' not in st.session_state.df_cartera.columns:
-                st.session_state.df_cartera['Ult_Val'] = "08/01/2026 11:30"
+                st.session_state.df_cartera['Ult_Val'] = "---"
         except:
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
             st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
@@ -194,6 +193,13 @@ if check_password():
                 st.toast("Precios actualizados", icon="✅")
                 st.rerun()
             except: st.error("Error al sincronizar.")
+        
+        if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
+            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
+            st.rerun()
 
     # --- 8. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
@@ -206,6 +212,7 @@ if check_password():
 
     # --- 9. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
+    st.markdown("Gestión de activos familiares en tiempo real")
     
     inv_total = df_v['Coste'].sum()
     val_total = df_v['Valor Mercado'].sum()
@@ -214,21 +221,19 @@ if check_password():
     c1, c2, c3 = st.columns(3)
     c1.metric("Capital Invertido", f"{inv_total:,.2f} €")
     c2.metric("Valor de Mercado", f"{val_total:,.2f} €")
-    c3.metric("Beneficio Latente", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%")
+    color_delta = "normal" if ben_total >= 0 else "inverse"
+    c3.metric("Beneficio Latente", f"{ben_total:,.2f} €", f"{(ben_total/inv_total*100 if inv_total > 0 else 0):.2f}%", delta_color=color_delta)
     st.divider()
 
-    # --- 10. FUNCIÓN PARA MOSTRAR SECCIONES ---
+    # --- 10. TABLAS DE POSICIONES ---
     def mostrar_seccion(tit, tipo_filtro, icon):
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregación para tabla resumen
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({
-            'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val': 'first'
-        }).reset_index()
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val': 'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
         
-        # Editor para fondos
+        # Editor manual para fondos
         if tipo_filtro == "Fondo":
             with st.expander("✏️ Actualizar Precios de Fondos"):
                 res_edit = res[['Nombre', 'P_Act']].copy()
@@ -245,7 +250,6 @@ if check_password():
                     st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                     st.rerun()
 
-        # Preparar columnas de visualización con NOMBRES IDÉNTICOS para el estilo
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
@@ -260,7 +264,6 @@ if check_password():
                 use_container_width=True, hide_index=True
             )
 
-        # Desgloses individuales
         with st.expander(f"Ver desglose de compras: {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
@@ -280,29 +283,62 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo", "📊")
     st.divider()
 
-    # --- 11. DIARIO Y APORTACIONES (RESTAURADO) ---
+    # --- 11. DIARIO HISTÓRICO ---
     st.subheader("📜 Diario de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+    with st.container(border=True):
+        st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+    st.divider()
 
+    # --- 12. APORTACIONES FAMILIARES ---
     st.subheader("👥 Capital Aportado")
     df_ap = st.session_state.df_aportaciones.copy()
+    df_ap['Fecha'] = pd.to_datetime(df_ap['Fecha']).dt.date
+
     col_a, col_x = st.columns(2)
     with col_a:
-        st.markdown("#### 👨‍💼 ANDER")
-        d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
-        total_a = e_a['Importe'].sum()
+        with st.container(border=True):
+            st.markdown("#### 👨‍💼 ANDER")
+            d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+            e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True,
+                                column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
+                                               "Fecha": st.column_config.DateColumn()})
+            total_a = e_a['Importe'].sum()
+            st.caption(f"Total Ander: {total_a:,.2f} €")
+
     with col_x:
-        st.markdown("#### 👨‍💼 XABAT")
-        d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
-        total_x = e_x['Importe'].sum()
+        with st.container(border=True):
+            st.markdown("#### 👨‍💼 XABAT")
+            d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+            e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True,
+                                column_config={"Importe": st.column_config.NumberColumn(format="%.2f €"),
+                                               "Fecha": st.column_config.DateColumn()})
+            total_x = e_x['Importe'].sum()
+            st.caption(f"Total Xabat: {total_x:,.2f} €")
 
     if st.button("💾 Guardar Aportaciones", use_container_width=True):
         e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
         st.session_state.df_aportaciones = pd.concat([e_a, e_x])
         st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
+        st.toast("Datos guardados con éxito")
         st.rerun()
 
-    st.markdown(f"<div style='text-align: center; background: #111827; padding: 25px; border-radius: 12px; color: white; margin: 20px 0;'><span style='font-size: 32px; font-weight: 800;'>{total_a + total_x:,.2f} € Total Aportado</span></div>", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style='text-align: center; background: #111827; padding: 25px; border-radius: 12px; color: white; margin: 20px 0;'>
+            <span style='font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;'>Suma Total Aportado</span><br>
+            <span style='font-size: 32px; font-weight: 800;'>{total_a + total_x:,.2f} €</span>
+        </div>
+    """, unsafe_allow_html=True)
+    st.divider()
+
+    # --- 13. GRÁFICAS ---
+    st.subheader("📊 Análisis de Cartera")
+    tabs = st.tabs(["Distribución Global", "Por Activo"])
+    with tabs[0]:
+        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=px.colors.qualitative.Antique)
+        fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[1]:
+        g1, g2 = st.columns(2)
+        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4), use_container_width=True)
+        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4), use_container_width=True)
