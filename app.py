@@ -73,8 +73,8 @@ st.markdown("""
         font-weight: 600;
     }
     
-    .pct-pos { color: #4ade80; }
-    .pct-neg { color: #f87171; }
+    .pct-pos { color: #39FF14; } /* Verde Neón */
+    .pct-neg { color: #FF007F; } /* Rosa Neón */
 
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
@@ -106,7 +106,6 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Limpieza de símbolos para detectar el número (incluyendo el cero)
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
@@ -244,6 +243,15 @@ if check_password():
                 st.toast("Precios actualizados", icon="✅")
                 st.rerun()
             except: st.error("Error al sincronizar.")
+        
+        # BOTÓN DE RESETEO RECUPERADO
+        if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
+            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
+            st.toast("Datos reiniciados", icon="⚠️")
+            st.rerun()
 
     # --- 8. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
@@ -390,14 +398,18 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 13. GRÁFICAS (CON COLORES BRILLANTES VIVID) ---
+    # --- 13. GRÁFICAS (COLORES FLÚOR PERSONALIZADOS) ---
     st.subheader("📊 Análisis de Cartera")
+    
+    # Paleta de colores Neón/Flúor
+    fluor_colors = ['#39FF14', '#FF007F', '#00FFFF', '#FFFF00', '#FF6600', '#BC13FE', '#FF00FF', '#4D4DFF']
+    
     tabs = st.tabs(["Distribución Global", "Por Activo"])
     with tabs[0]:
-        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=px.colors.qualitative.Vivid)
+        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=fluor_colors)
         fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
         st.plotly_chart(fig, use_container_width=True)
     with tabs[1]:
         g1, g2 = st.columns(2)
-        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4, color_discrete_sequence=px.colors.qualitative.Vivid), use_container_width=True)
-        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4, color_discrete_sequence=px.colors.qualitative.Vivid), use_container_width=True)
+        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4, color_discrete_sequence=fluor_colors), use_container_width=True)
+        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4, color_discrete_sequence=fluor_colors), use_container_width=True)
