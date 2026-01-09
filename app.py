@@ -106,7 +106,7 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Regex para extraer número ignorando símbolos, paréntesis y comas de miles
+                # Limpieza de símbolos para detectar el número (incluyendo el cero)
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
@@ -123,9 +123,9 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 5. BASES DE DATOS (INTEGRIDAD TOTAL) ---
+    # --- 5. BASES DE DATOS (Mantenidas idénticas) ---
     def cargar_datos_maestros():
-        f_ini = "---"
+        f_ini = "08/01/2026 11:30"
         return [
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR", "Ult_Val": f_ini},
             {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR", "Ult_Val": f_ini},
@@ -244,13 +244,6 @@ if check_password():
                 st.toast("Precios actualizados", icon="✅")
                 st.rerun()
             except: st.error("Error al sincronizar.")
-        
-        if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
-            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
-            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
-            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
-            st.rerun()
 
     # --- 8. PROCESAMIENTO ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
@@ -261,7 +254,7 @@ if check_password():
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
-    # --- 9. DASHBOARD SUPERIOR (REDiseñado Armónicamente) ---
+    # --- 9. DASHBOARD SUPERIOR (REDiseño Armónico) ---
     st.title("🏦 Cartera Agirre & Uranga")
     
     inv_total = df_v['Coste'].sum()
@@ -269,7 +262,6 @@ if check_password():
     ben_total = val_total - inv_total
     rent_total = (ben_total / inv_total * 100 if inv_total > 0 else 0)
     
-    # Renderizado de métricas en una sola fila armonizada
     st.markdown(f"""
         <div class="metric-container">
             <div class="custom-card">
@@ -398,14 +390,14 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 13. GRÁFICAS ---
+    # --- 13. GRÁFICAS (CON COLORES BRILLANTES VIVID) ---
     st.subheader("📊 Análisis de Cartera")
     tabs = st.tabs(["Distribución Global", "Por Activo"])
     with tabs[0]:
-        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=px.colors.qualitative.Antique)
+        fig = px.pie(df_v, values='Valor Mercado', names='Nombre', hole=0.5, color_discrete_sequence=px.colors.qualitative.Vivid)
         fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
         st.plotly_chart(fig, use_container_width=True)
     with tabs[1]:
         g1, g2 = st.columns(2)
-        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4), use_container_width=True)
-        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4), use_container_width=True)
+        g1.plotly_chart(px.pie(df_v[df_v['Tipo']=='Acción'], values='Valor Mercado', names='Nombre', title="Pesos en Acciones", hole=0.4, color_discrete_sequence=px.colors.qualitative.Vivid), use_container_width=True)
+        g2.plotly_chart(px.pie(df_v[df_v['Tipo']=='Fondo'], values='Valor Mercado', names='Nombre', title="Pesos en Fondos", hole=0.4, color_discrete_sequence=px.colors.qualitative.Vivid), use_container_width=True)
