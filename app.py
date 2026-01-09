@@ -53,12 +53,13 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Limpiamos el string para obtener el número (ej: "120.50 €" -> 120.50)
-                clean_val = val.split(' ')[0].replace(',', '')
+                # Limpiamos el string de símbolos para convertirlo en número
+                clean_val = val.replace('€', '').replace('$', '').replace('%', '').replace(',', '').strip()
                 num = float(clean_val)
             elif isinstance(val, (int, float)):
                 num = val
             else: return None
+            
             if num > 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             if num < 0: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -72,7 +73,7 @@ if check_password():
 
     # --- 5. BASES DE DATOS ---
     def cargar_datos_maestros():
-        f_ini = "08/01/2026 11:30"
+        f_ini = "---"
         return [
             {"Fecha": "2026-01-05", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "AMP.MC", "Nombre": "Amper", "Cant": 10400.0, "Coste": 2023.79, "P_Act": 0.194, "Moneda": "EUR", "Ult_Val": f_ini},
             {"Fecha": "2025-09-22", "Tipo": "Acción", "Broker": "MyInvestor", "Ticker": "NXT.MC", "Nombre": "N. Exp. Textil", "Cant": 1580.0, "Coste": 1043.75, "P_Act": 0.718, "Moneda": "EUR", "Ult_Val": f_ini},
@@ -115,17 +116,14 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento. Recuperado: 9.443,64 €"}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento."}
         ]
 
     def cargar_datos_aportaciones():
         return [
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 44000.0},
             {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
-            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2024, 10, 4), "Importe": 600.0},
-            {"Titular": "Ander", "Broker": "R4", "Fecha": date(2025, 1, 8), "Importe": 500.0},
             {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 8, 30), "Importe": 30000.0},
-            {"Titular": "Xabat", "Broker": "R4", "Fecha": date(2024, 9, 3), "Importe": 3000.0},
         ]
 
     # --- 6. GESTIÓN DE ARCHIVOS ---
@@ -147,8 +145,7 @@ if check_password():
             temp_ap['Fecha'] = pd.to_datetime(temp_ap['Fecha']).dt.date
             st.session_state.df_aportaciones = temp_ap
         except:
-            temp_ap = pd.DataFrame(cargar_datos_aportaciones())
-            st.session_state.df_aportaciones = temp_ap
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
             st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
 
     # --- 7. BARRA LATERAL ---
@@ -200,22 +197,13 @@ if check_password():
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         
-        # Agregación común
-        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({
-            'Cant':'sum',
-            'Coste':'sum',
-            'Valor Mercado':'sum',
-            'P_Act':'first', 
-            'Beneficio':'sum', 
-            'Ult_Val': 'first'
-        }).reset_index()
+        # Agregación
+        res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val': 'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
-        res['Beneficio (€)'] = res['Beneficio'].apply(lambda x: f"{x:,.2f} €")
-        res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
         
-        # LÓGICA ESPECÍFICA PARA FONDOS (EDICIÓN)
+        # LÓGICA DE EDICIÓN (SOLO FONDOS)
         if tipo_filtro == "Fondo":
-            with st.expander("✏️ Actualizar Precios de Fondos"):
+            with st.expander("✏️ Actualizar Precios de Fondos manualmente"):
                 res_edit = res[['Nombre', 'P_Act']].copy()
                 edited_df = st.data_editor(
                     res_edit,
@@ -230,30 +218,33 @@ if check_password():
                     st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
                     st.rerun()
 
-        # VISTA DE TABLA (IGUAL PARA AMBOS, CON COLORES)
+        # FORMATEO PARA VISUALIZACIÓN
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+        res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+        res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
+        
         res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
 
         with st.container(border=True):
             st.dataframe(
-                res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€)', 'Rentabilidad (%)', 'Última Val.']]
-                .style.applymap(resaltar_beneficio, subset=['Beneficio (€)', 'Rentabilidad (%)'])
+                res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad (%)', 'Última Val.']]
+                .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
                 .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €"}),
                 use_container_width=True, hide_index=True
             )
 
-        # DESGLOSE INDIVIDUAL (TAMBIÉN CON COLORES)
+        # DESGLOSE
         with st.expander(f"Ver desglose de compras: {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
-                det['Beneficio (€)'] = det['Beneficio'].apply(lambda x: f"{x:,.2f} €")
-                det['Rentabilidad (%)'] = det['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
                 det['Precio Actual'] = det.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
+                det['Beneficio (€/$)'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
+                det['Rentabilidad (%)'] = det['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
                 st.write(f"**{n}**")
                 st.dataframe(
-                    det[['Fecha', 'Cant', 'Coste', 'Precio Actual', 'Valor Mercado', 'Beneficio (€)', 'Rentabilidad (%)', 'Ult_Val']]
+                    det[['Fecha', 'Cant', 'Coste', 'Precio Actual', 'Valor Mercado', 'Beneficio (€/$)', 'Rentabilidad (%)', 'Ult_Val']]
                     .rename(columns={'Ult_Val': 'Última Val.'})
-                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€)', 'Rentabilidad (%)'])
+                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
                     .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Valor Mercado":"{:.2f} €"}),
                     use_container_width=True, hide_index=True
                 )
