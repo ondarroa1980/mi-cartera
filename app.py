@@ -18,14 +18,12 @@ st.markdown("""
     <style>
     .main { background-color: #f9fafb; }
     
-    /* Contenedor de tarjetas superiores */
     .metric-container {
         display: flex;
         gap: 20px;
         margin-bottom: 25px;
     }
     
-    /* Estilo base para todas las tarjetas */
     .custom-card {
         flex: 1;
         padding: 22px;
@@ -39,9 +37,8 @@ st.markdown("""
         background-color: white;
     }
     
-    /* Tarjeta destacada (Beneficio) */
     .highlight-card {
-        background-color: #111827; /* Azul/Negro profesional */
+        background-color: #111827; 
         color: white;
         border: none;
     }
@@ -73,8 +70,8 @@ st.markdown("""
         font-weight: 600;
     }
     
-    .pct-pos { color: #4ade80; } /* Verde esmeralda */
-    .pct-neg { color: #f87171; } /* Rojo vivo */
+    .pct-pos { color: #4ade80; } 
+    .pct-neg { color: #f87171; } 
 
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
@@ -106,13 +103,11 @@ if check_password():
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
-                # Extraemos el número base antes de símbolos o paréntesis
                 clean_num = re.sub(r'[^0-9.\-]', '', val.split('(')[0].replace(',', ''))
                 num = float(clean_num)
             else:
                 num = float(val)
             
-            # Verde para >= 0 (incluye neutral), Rojo para negativos
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
         except: pass
@@ -124,7 +119,7 @@ if check_password():
             return f"{valor_eur:,.{decimales}f} € ({valor_usd:,.2f} $)"
         return f"{valor_eur:,.{decimales}f} €"
 
-    # --- 5. BASES DE DATOS (RESTAURACIÓN ESCRUPULOSA) ---
+    # --- 5. BASES DE DATOS ---
     def cargar_datos_maestros():
         f_ini = "08/01/2026 11:30"
         return [
@@ -225,26 +220,38 @@ if check_password():
             st.session_state.df_aportaciones = temp_ap
             st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
 
-    # --- 7. BARRA LATERAL ---
+    # --- 7. BARRA LATERAL (CON CAMBIO PUNTO 1 Y 3) ---
     with st.sidebar:
         st.markdown("### 🏦 Administración")
         if st.button("🔄 Sincronizar Bolsa", use_container_width=True):
             try:
-                rate_data = yf.Ticker("EURUSD=X").history(period="1d")
+                # PUNTO 3: Obtención de tasa EURUSD actualizada
+                rate_data = yf.download("EURUSD=X", period="1d")
                 rate = rate_data["Close"].iloc[-1] if not rate_data.empty else 1.09
                 st.session_state.rate_aguirre = rate
-                ahora = datetime.now().strftime("%d/%m/%Y %H:%M")
-                for i, row in st.session_state.df_cartera.iterrows():
-                    if row['Tipo'] == "Acción":
-                        t_data = yf.Ticker(row['Ticker']).history(period="1d")
-                        if not t_data.empty:
-                            p_raw = t_data["Close"].iloc[-1]
+                
+                # PUNTO 1: Descarga masiva de todos los tickers únicos
+                tickers_acciones = st.session_state.df_cartera[st.session_state.df_cartera['Tipo'] == "Acción"]['Ticker'].unique().tolist()
+                
+                if tickers_acciones:
+                    data_bolsa = yf.download(tickers_acciones, period="1d")['Close'].iloc[-1]
+                    ahora = datetime.now().strftime("%d/%m/%Y %H:%M")
+                    
+                    for i, row in st.session_state.df_cartera.iterrows():
+                        if row['Tipo'] == "Acción":
+                            t = row['Ticker']
+                            # Manejo de si yfinance devuelve Serie o DataFrame (un solo ticker vs varios)
+                            p_raw = data_bolsa[t] if isinstance(data_bolsa, pd.Series) else data_bolsa
+                            
+                            # Ajuste de moneda y actualización de fecha
                             st.session_state.df_cartera.at[i, 'P_Act'] = p_raw / rate if row['Moneda'] == "USD" else p_raw
                             st.session_state.df_cartera.at[i, 'Ult_Val'] = ahora
+                
                 st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
-                st.toast("Precios actualizados", icon="✅")
+                st.toast("Precios y divisas actualizados", icon="✅")
                 st.rerun()
-            except: st.error("Error al sincronizar.")
+            except Exception as e: 
+                st.error(f"Error al sincronizar: {e}")
         
         if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
             st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
@@ -263,7 +270,7 @@ if check_password():
     df_v['Beneficio'] = df_v['Valor Mercado'] - df_v['Coste']
     df_v['Rentabilidad %'] = (df_v['Beneficio'] / df_v['Coste'] * 100)
 
-    # --- 9. DASHBOARD SUPERIOR (REDiseño Armónico) ---
+    # --- 9. DASHBOARD SUPERIOR ---
     st.title("🏦 Cartera Agirre & Uranga")
     
     inv_total = df_v['Coste'].sum()
@@ -294,7 +301,7 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 10. TABLAS DE POSICIONES ---
+    # --- 10. TABLAS DE POSICIONES (CON CAMBIO PUNTO 2) ---
     def mostrar_seccion(tit, tipo_filtro, icon):
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
@@ -325,9 +332,10 @@ if check_password():
         res_display = res.rename(columns={'Cant': 'Cant/Part.', 'Coste': 'Inversión', 'Valor Mercado': 'Valor (€)', 'Ult_Val': 'Última Val.'})
 
         with st.container(border=True):
+            # PUNTO 2: Uso de .map en lugar de .applymap para evitar deprecación
             st.dataframe(
                 res_display[['Broker', 'Nombre', 'Cant/Part.', 'Inversión', 'Valor (€)', 'Precio Actual', 'Beneficio (€/$)', 'Rentabilidad (%)', 'Última Val.']]
-                .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
+                .style.map(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
                 .format({"Cant/Part.":"{:.4f}","Inversión":"{:.2f} €","Valor (€)":"{:.2f} €"}),
                 use_container_width=True, hide_index=True
             )
@@ -339,10 +347,12 @@ if check_password():
                 det['Beneficio (€/$)'] = det.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
                 det['Rentabilidad (%)'] = det['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
                 st.write(f"**{n}**")
+                
+                # PUNTO 2: Uso de .map aquí también
                 st.dataframe(
                     det[['Fecha', 'Cant', 'Coste', 'Precio Actual', 'Valor Mercado', 'Beneficio (€/$)', 'Rentabilidad (%)', 'Ult_Val']]
                     .rename(columns={'Ult_Val': 'Última Val.'})
-                    .style.applymap(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
+                    .style.map(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
                     .format({"Cant":"{:.4f}","Coste":"{:.2f} €","Valor Mercado":"{:.2f} €"}),
                     use_container_width=True, hide_index=True
                 )
@@ -399,10 +409,8 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 13. GRÁFICAS (COLORES VIVOS BÁSICOS) ---
+    # --- 13. GRÁFICAS ---
     st.subheader("📊 Análisis de Cartera")
-    
-    # Paleta cualitativa estándar de Plotly (viva pero profesional)
     vivid_basic_colors = px.colors.qualitative.Plotly 
     
     tabs = st.tabs(["Distribución Global", "Por Activo"])
