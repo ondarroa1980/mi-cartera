@@ -13,27 +13,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. CSS PARA DISEÑO PROFESIONAL ---
+# --- 2. CSS PARA DISEÑO PROFESIONAL Y ARMONIZADO ---
 st.markdown("""
     <style>
     .main { background-color: #f9fafb; }
     .metric-container { display: flex; gap: 20px; margin-bottom: 25px; }
     .custom-card {
-        flex: 1; padding: 22px; border-radius: 12px; height: 140px;
+        flex: 1; padding: 22px; border-radius: 12px; height: 110px;
         display: flex; flex-direction: column; justify-content: center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; background-color: white;
     }
     .highlight-card { background-color: #111827; color: white; border: none; }
-    .card-label { font-size: 0.85rem; font-weight: 500; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
+    .card-label { font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; color: #6b7280; }
     .highlight-card .card-label { color: #9ca3af; }
-    .card-value { font-size: 1.85rem; font-weight: 700; color: #111827; display: flex; align-items: baseline; gap: 12px; }
+    .card-value { font-size: 1.6rem; font-weight: 700; color: #111827; }
     .highlight-card .card-value { color: white; }
-    .pct-badge { font-size: 1.3rem; font-weight: 600; }
-    .pct-pos { color: #4ade80; } 
-    .pct-neg { color: #f87171; } 
+    
     div[data-testid="stExpander"] { border: none !important; box-shadow: none !important; background-color: transparent !important; }
     .stButton>button { border-radius: 6px; font-weight: 500; }
-    h1, h2, h3 { color: #111827; font-weight: 700 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -57,7 +54,7 @@ def check_password():
 
 if check_password():
     
-    # --- 4. FUNCIONES DE APOYO ---
+    # --- 4. FUNCIONES DE APOYO (CON FIX PARA ERROR TYPEERROR) ---
     def resaltar_beneficio(val):
         try:
             if isinstance(val, str):
@@ -67,17 +64,21 @@ if check_password():
                 num = float(val)
             if num >= 0: return 'background-color: #ecfdf5; color: #065f46; font-weight: bold;'
             else: return 'background-color: #fef2f2; color: #991b1b; font-weight: bold;'
-        except: return None
+        except: pass
+        return None
 
     def fmt_dual(valor_eur, moneda, tasa, decimales=2):
         try:
+            # Blindaje contra valores no numéricos (Fix error captura)
             v_eur = float(valor_eur)
             t = float(tasa)
-            if moneda == "USD": return f"{v_eur:,.{decimales}f} € ({v_eur * t:,.2f} $)"
+            if moneda == "USD":
+                return f"{v_eur:,.{decimales}f} € ({v_eur * t:,.2f} $)"
             return f"{v_eur:,.{decimales}f} €"
-        except: return "N/A"
+        except:
+            return "---"
 
-    # --- 5. BASES DE DATOS (RESTAURACIÓN Y CLARIDAD EN DIARIO) ---
+    # --- 5. BASES DE DATOS (CONSOLIDADO CON INFORMES) ---
     def cargar_datos_maestros():
         f_ini = "08/01/2026 11:30"
         return [
@@ -101,28 +102,10 @@ if check_password():
 
     def cargar_diario_operaciones():
         return [
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "INGRESO CAPITAL", "Importe": 63822.16, "Detalle": "Compra inicial fondo monetario"},
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "BENEFICIO TRASPASO", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada de anterior fondo"},
-            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "TRASPASO INTERNO (ENTRADA)", "Importe": 7000.00, "Detalle": "Desde DWS Floating Rate"},
-            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "INGRESO CAPITAL", "Importe": 3000.00, "Detalle": "Incremento posición"},
-            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "TRASPASO INTERNO (ENTRADA)", "Importe": 9999.96, "Detalle": "Desde DWS Floating Rate"},
-            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 5000.00, "Detalle": "Entrada fondo"},
-            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
-            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "INGRESO CAPITAL", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
-            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 1000.00, "Detalle": "Incremento capital"},
-            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "INGRESO CAPITAL", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
-            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "INGRESO CAPITAL", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
-            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 451.82, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "INGRESO CAPITAL", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
-            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "INGRESO CAPITAL", "Importe": 999.98, "Detalle": "Entrada sector China"},
-            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "INGRESO CAPITAL", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (VENTA TOTAL)", "Importe": -556.32, "Detalle": "Cierre de posición por estancamiento"}
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "INGRESO CAPITAL", "Importe": 63822.16, "Detalle": "Compra inicial fondo"},
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "BENEFICIO TRASPASADO", "Importe": 2230.82, "Detalle": "Plusvalía histórica consolidada"},
+            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "TRASPASO INTERNO", "Importe": 7000.00, "Detalle": "Desde DWS"},
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (VENTA TOTAL)", "Importe": -554.34, "Detalle": "Cierre posición"}
         ]
 
     def cargar_datos_aportaciones():
@@ -165,11 +148,12 @@ if check_password():
 
     if 'df_aportaciones' not in st.session_state:
         try:
-            st.session_state.df_aportaciones = pd.read_csv(ARCHIVO_AP)
-            st.session_state.df_aportaciones['Fecha'] = pd.to_datetime(st.session_state.df_aportaciones['Fecha']).dt.date
+            temp_ap = pd.read_csv(ARCHIVO_AP)
+            temp_ap['Fecha'] = pd.to_datetime(temp_ap['Fecha']).dt.date
+            st.session_state.df_aportaciones = temp_ap
         except: st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
 
-    # --- 7. BARRA LATERAL (CON BOTÓN DE REINICIO) ---
+    # --- 7. BARRA LATERAL ---
     with st.sidebar:
         st.markdown("### 🏦 Administración")
         if st.button("🔄 Sincronizar Bolsa", use_container_width=True):
@@ -219,20 +203,19 @@ if check_password():
             <div class="custom-card"><div class="card-label">Cap. Invertido</div><div class="card-value">{inv_t:,.2f} €</div></div>
             <div class="custom-card"><div class="card-label">Valor de Mercado</div><div class="card-value">{val_t:,.2f} €</div></div>
             <div class="custom-card highlight-card"><div class="card-label">Beneficio Latente</div>
-                <div class="card-value">{ben_t:,.2f} € <span class="pct-badge {"pct-pos" if rent_t >= 0 else "pct-neg"}">{rent_t:+.2f}%</span></div>
+                <div class="card-value">{ben_t:,.2f} € <small style='font-size:0.9rem; margin-left:8px; opacity:0.8'>{rent_t:+.2f}%</small></div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 9. TABLAS CON DESGLOSE Y EDITOR MANUAL (RESTAURADO) ---
+    # --- 9. TABLAS CON DESGLOSE Y EDITOR MANUAL ---
     def mostrar_seccion(tit, tipo_filtro, icon):
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val':'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
 
-        # EDITOR MANUAL PARA FONDOS (RESTAURADO)
         if tipo_filtro == "Fondo":
             with st.expander("✏️ Actualizar Precios de Fondos Manualmente"):
                 res_edit = res[['Nombre', 'P_Act']].copy()
@@ -257,7 +240,7 @@ if check_password():
                 use_container_width=True, hide_index=True
             )
 
-        with st.expander(f"Ver desglose individual de {tit}"):
+        with st.expander(f"Ver compras individuales de {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
                 det['Rentabilidad %'] = (det['Beneficio'] / det['Coste'] * 100)
@@ -273,43 +256,48 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo", "📊")
     st.divider()
 
-    # --- 10. DIARIO DE OPERACIONES MEJORADO ---
-    st.subheader("📜 Diario de Operaciones")
-    df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
-    with st.container(border=True):
-        st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
-    st.divider()
-
-    # --- 11. CAPITAL APORTADO (RESTAURADO COMPLETO) ---
+    # --- 10. CAPITAL APORTADO (REDiseño solicitado) ---
     st.subheader("👥 Capital Aportado")
     df_ap = st.session_state.df_aportaciones.copy()
-    c_a, c_x = st.columns(2)
-    with c_a:
-        st.markdown("#### 👨‍💼 ANDER")
-        d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True)
-        total_a = e_a['Importe'].sum()
-        st.caption(f"Total Ander: {total_a:,.2f} €")
-    with c_x:
-        st.markdown("#### 👨‍💼 XABAT")
-        d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
-        e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True)
-        total_x = e_x['Importe'].sum()
-        st.caption(f"Total Xabat: {total_x:,.2f} €")
+    
+    # Cálculo de totales
+    total_a = df_ap[df_ap['Titular'] == 'Ander']['Importe'].sum()
+    total_x = df_ap[df_ap['Titular'] == 'Xabat']['Importe'].sum()
+    total_global = total_a + total_x
 
+    # Tarjetas de totales (Arriba para visibilidad)
+    st.markdown(f"""
+        <div class="metric-container">
+            <div class="custom-card"><div class="card-label">Total Ander</div><div class="card-value">{total_a:,.2f} €</div></div>
+            <div class="custom-card"><div class="card-label">Total Xabat</div><div class="card-value">{total_x:,.2f} €</div></div>
+            <div class="custom-card highlight-card"><div class="card-label">Suma Total Cartera</div><div class="card-value">{total_global:,.2f} €</div></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col_a, col_x = st.columns(2)
+    with col_a:
+        st.markdown("**Lista Ander**")
+        d_a = df_ap[df_ap['Titular'] == 'Ander'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+        e_a = st.data_editor(d_a, num_rows="dynamic", key="ea", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
+    with col_x:
+        st.markdown("**Lista Xabat**")
+        d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
+        e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True, column_config={"Importe": st.column_config.NumberColumn(format="%.2f €")})
+
+    st.info("💡 **¿Para qué sirve el botón?** Al editar las listas superiores, los cambios solo se ven en pantalla. Pulsa 'Guardar' para grabarlos definitivamente en el archivo de la aplicación.")
     if st.button("💾 Guardar Aportaciones", use_container_width=True):
         e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
         st.session_state.df_aportaciones = pd.concat([e_a, e_x])
         st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
-        st.toast("Datos guardados")
+        st.toast("Datos guardados con éxito")
         st.rerun()
 
-    st.markdown(f"""
-        <div style='text-align: center; background: #111827; padding: 25px; border-radius: 12px; color: white; margin: 20px 0;'>
-            <span style='font-size: 14px; text-transform: uppercase; color: #9ca3af;'>Suma Total Aportado</span><br>
-            <span style='font-size: 32px; font-weight: 800;'>{total_a + total_x:,.2f} €</span>
-        </div>
-    """, unsafe_allow_html=True)
+    # --- 11. DIARIO DE OPERACIONES ---
+    st.divider()
+    st.subheader("📜 Diario de Operaciones")
+    df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
+    with st.container(border=True):
+        st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
 
     # --- 12. GRÁFICAS ---
     st.divider()
