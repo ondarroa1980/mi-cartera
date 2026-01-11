@@ -67,7 +67,7 @@ if check_password():
             return f"{v_eur:,.{decimales}f} €"
         except: return "---"
 
-    # --- 5. BASES DE DATOS (RESTAURACIÓN INTEGRAL) ---
+    # --- 5. BASES DE DATOS (MÁXIMA FIDELIDAD) ---
     def cargar_datos_maestros():
         f_ini = "08/01/2026 11:30"
         return [
@@ -112,7 +112,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "INGRESO (Suscripción)", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "INGRESO (Ampliación)", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "INGRESO (Compra)", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (Venta Total)", "Importe": -554.34, "Detalle": "Importe retirado: 9.445,62 €. Cierre por pérdida consolidada."}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (Venta Total)", "Importe": -554.34, "Detalle": "Importe recuperado: 9.445,62 €. Cierre por pérdida consolidada."}
         ]
 
     def cargar_datos_aportaciones():
@@ -277,12 +277,18 @@ if check_password():
         d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True)
 
+    # LÓGICA DE AUTO-GUARDADO: Si hay cambios en los editores, actualizamos sesión y CSV
     if (st.session_state.ea['edited_rows'] or st.session_state.ea['added_rows'] or st.session_state.ea['deleted_rows'] or 
         st.session_state.ex['edited_rows'] or st.session_state.ex['added_rows'] or st.session_state.ex['deleted_rows']):
-        e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
+        
+        # Reasignar titulares para evitar errores en la unión
+        e_a['Titular'] = 'Ander'
+        e_x['Titular'] = 'Xabat'
+        
+        # Unir y guardar
         st.session_state.df_aportaciones = pd.concat([e_a, e_x])
         st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
-        st.toast("Cambios guardados", icon="💾")
+        st.toast("Cambio guardado automáticamente", icon="💾")
 
     # --- 11. DIARIO DE OPERACIONES ---
     st.divider()
