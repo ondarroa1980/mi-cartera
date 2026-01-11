@@ -112,7 +112,7 @@ if check_password():
             {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "INGRESO (Suscripción)", "Importe": 999.98, "Detalle": "Entrada sector China"},
             {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "INGRESO (Ampliación)", "Importe": 500.00, "Detalle": "Aportación periódica"},
             {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "INGRESO (Compra)", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (Venta Total)", "Importe": -556.32, "Detalle": "Cierre de posición"}
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (Venta Total)", "Importe": -554.34, "Detalle": "Importe retirado: 9.445,62 €. Cierre por pérdida consolidada."}
         ]
 
     def cargar_datos_aportaciones():
@@ -212,7 +212,7 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 9. TABLAS CON DESGLOSE DETALLADO (RESTAURADO) ---
+    # --- 9. TABLAS CON DESGLOSE DETALLADO ---
     def mostrar_seccion(tit, tipo_filtro, icon):
         st.subheader(f"{icon} {tit}")
         sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
@@ -237,7 +237,6 @@ if check_password():
                      .style.map(resaltar_beneficio, subset=['Beneficio (€/$)', 'Rentabilidad (%)'])
                      .format({"Coste":"{:.2f} €","Valor Mercado":"{:.2f} €", "Cant":"{:.4f}"}), use_container_width=True, hide_index=True)
 
-        # DESGLOSE INDIVIDUAL (Aquí están las compras que faltaban)
         with st.expander(f"Ver desglose individual de compras: {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
@@ -254,7 +253,7 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo", "📊")
     st.divider()
 
-    # --- 10. CAPITAL APORTADO (NUEVO DISEÑO CON AUTO-SAVE) ---
+    # --- 10. CAPITAL APORTADO (AUTO-SAVE) ---
     st.subheader("👥 Capital Aportado")
     df_ap = st.session_state.df_aportaciones.copy()
     total_a = df_ap[df_ap['Titular'] == 'Ander']['Importe'].sum()
@@ -278,7 +277,6 @@ if check_password():
         d_x = df_ap[df_ap['Titular'] == 'Xabat'][['Broker', 'Fecha', 'Importe']].reset_index(drop=True)
         e_x = st.data_editor(d_x, num_rows="dynamic", key="ex", use_container_width=True)
 
-    # Lógica de auto-guardado al detectar cualquier cambio en los editores
     if (st.session_state.ea['edited_rows'] or st.session_state.ea['added_rows'] or st.session_state.ea['deleted_rows'] or 
         st.session_state.ex['edited_rows'] or st.session_state.ex['added_rows'] or st.session_state.ex['deleted_rows']):
         e_a['Titular'], e_x['Titular'] = 'Ander', 'Xabat'
@@ -286,13 +284,13 @@ if check_password():
         st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
         st.toast("Cambios guardados", icon="💾")
 
-    # --- 11. DIARIO RESTAURADO ---
+    # --- 11. DIARIO DE OPERACIONES ---
     st.divider()
     st.subheader("📜 Diario de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
 
-    # --- 12. GRÁFICAS RESTAURADAS ---
+    # --- 12. GRÁFICAS ---
     st.divider()
     st.subheader("📊 Análisis")
     colors = px.colors.qualitative.Plotly
