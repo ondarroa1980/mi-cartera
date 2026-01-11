@@ -77,7 +77,7 @@ if check_password():
             return f"{v_eur:,.{decimales}f} €"
         except: return "N/A"
 
-    # --- 5. BASES DE DATOS (RESTAURACIÓN TOTAL DE DATOS ORIGINALES) ---
+    # --- 5. BASES DE DATOS (RESTAURACIÓN Y CLARIDAD EN DIARIO) ---
     def cargar_datos_maestros():
         f_ini = "08/01/2026 11:30"
         return [
@@ -101,28 +101,28 @@ if check_password():
 
     def cargar_diario_operaciones():
         return [
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Suscripción inicial", "Importe": 63822.16, "Detalle": "Entrada fondo monetario"},
-            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "Beneficio Traspasado", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada"},
-            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "Traspaso entrada", "Importe": 7000.00, "Detalle": "Desde DWS (deuda nórdica)"},
-            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "Ampliación", "Importe": 3000.00, "Detalle": "Incremento posición"},
-            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "Traspaso entrada", "Importe": 9999.96, "Detalle": "Desde DWS (posición dólar)"},
-            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "Compra inicial", "Importe": 5000.00, "Detalle": "Entrada fondo"},
-            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "Compra inicial", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
-            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "Compra", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
-            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 1000.00, "Detalle": "Incremento capital"},
-            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "Compra", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
-            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "Compra inicial", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
-            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 451.82, "Detalle": "Aportación periódica"},
-            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "Ampliación", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
-            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "Compra inicial", "Importe": 999.98, "Detalle": "Entrada sector China"},
-            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "Ampliación", "Importe": 500.00, "Detalle": "Aportación periódica"},
-            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "Compra", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
-            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "VENTA TOTAL", "Importe": -556.32, "Detalle": "Cierre por estancamiento."}
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "INGRESO CAPITAL", "Importe": 63822.16, "Detalle": "Compra inicial fondo monetario"},
+            {"Fecha": "2024-09-27", "Producto": "DWS Floating Rate", "Operación": "BENEFICIO TRASPASO", "Importe": 2230.00, "Detalle": "Plusvalía histórica consolidada de anterior fondo"},
+            {"Fecha": "2024-11-26", "Producto": "Evli Nordic Corp", "Operación": "TRASPASO INTERNO (ENTRADA)", "Importe": 7000.00, "Detalle": "Desde DWS Floating Rate"},
+            {"Fecha": "2024-11-27", "Producto": "Evli Nordic Corp", "Operación": "INGRESO CAPITAL", "Importe": 3000.00, "Detalle": "Incremento posición"},
+            {"Fecha": "2024-11-27", "Producto": "JPM US Short Duration", "Operación": "TRASPASO INTERNO (ENTRADA)", "Importe": 9999.96, "Detalle": "Desde DWS Floating Rate"},
+            {"Fecha": "2025-02-05", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 5000.00, "Detalle": "Entrada fondo"},
+            {"Fecha": "2025-02-19", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 5016.20, "Detalle": "Entrada MSCI World"},
+            {"Fecha": "2025-03-04", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-03-04", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-04-10", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-05-01", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-08-13", "Producto": "MSCI World Index", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-09-02", "Producto": "UnitedHealth", "Operación": "INGRESO CAPITAL", "Importe": 1867.84, "Detalle": "Compra 7 acciones"},
+            {"Fecha": "2025-09-02", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 1000.00, "Detalle": "Incremento capital"},
+            {"Fecha": "2025-09-16", "Producto": "JD.com", "Operación": "INGRESO CAPITAL", "Importe": 1710.79, "Detalle": "Compra 58 acciones"},
+            {"Fecha": "2025-09-22", "Producto": "N. Exp. Textil", "Operación": "INGRESO CAPITAL", "Importe": 1043.75, "Detalle": "Compra 1580 acciones"},
+            {"Fecha": "2025-09-30", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 451.82, "Detalle": "Aportación periódica"},
+            {"Fecha": "2025-10-09", "Producto": "N. Exp. Textil", "Operación": "INGRESO CAPITAL", "Importe": 1018.05, "Detalle": "Compra 1290 acciones"},
+            {"Fecha": "2025-11-05", "Producto": "Pictet China Index", "Operación": "INGRESO CAPITAL", "Importe": 999.98, "Detalle": "Entrada sector China"},
+            {"Fecha": "2025-11-15", "Producto": "Numantia Patrimonio", "Operación": "INGRESO CAPITAL", "Importe": 500.00, "Detalle": "Aportación periódica"},
+            {"Fecha": "2026-01-05", "Producto": "Amper", "Operación": "INGRESO CAPITAL", "Importe": 2023.79, "Detalle": "Compra 10400 acciones"},
+            {"Fecha": "2026-01-08", "Producto": "JPM US Short Duration", "Operación": "RETIRADA (VENTA TOTAL)", "Importe": -556.32, "Detalle": "Cierre de posición por estancamiento"}
         ]
 
     def cargar_datos_aportaciones():
@@ -165,13 +165,11 @@ if check_password():
 
     if 'df_aportaciones' not in st.session_state:
         try:
-            temp_ap = pd.read_csv(ARCHIVO_AP)
-            temp_ap['Fecha'] = pd.to_datetime(temp_ap['Fecha']).dt.date
-            st.session_state.df_aportaciones = temp_ap
-        except:
-            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones = pd.read_csv(ARCHIVO_AP)
+            st.session_state.df_aportaciones['Fecha'] = pd.to_datetime(st.session_state.df_aportaciones['Fecha']).dt.date
+        except: st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
 
-    # --- 7. SINCRONIZACIÓN (PUNTOS 1, 3 Y PROTECCIÓN) ---
+    # --- 7. BARRA LATERAL (CON BOTÓN DE REINICIO) ---
     with st.sidebar:
         st.markdown("### 🏦 Administración")
         if st.button("🔄 Sincronizar Bolsa", use_container_width=True):
@@ -196,6 +194,14 @@ if check_password():
                 st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
+        if st.button("🚨 Reiniciar Datos", type="secondary", use_container_width=True):
+            st.session_state.df_cartera = pd.DataFrame(cargar_datos_maestros())
+            st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+            st.session_state.df_aportaciones = pd.DataFrame(cargar_datos_aportaciones())
+            st.session_state.df_aportaciones.to_csv(ARCHIVO_AP, index=False)
+            st.toast("Datos reiniciados", icon="⚠️")
+            st.rerun()
+
     # --- 8. DASHBOARD SUPERIOR ---
     rt = getattr(st.session_state, 'rate_aguirre', 1.09)
     df_v = st.session_state.df_cartera.copy()
@@ -219,12 +225,26 @@ if check_password():
     """, unsafe_allow_html=True)
     st.divider()
 
-    # --- 9. TABLAS CON DESGLOSE ---
-    def mostrar_seccion(tit, tipo, icon):
+    # --- 9. TABLAS CON DESGLOSE Y EDITOR MANUAL (RESTAURADO) ---
+    def mostrar_seccion(tit, tipo_filtro, icon):
         st.subheader(f"{icon} {tit}")
-        sub = df_v[df_v['Tipo'] == tipo].copy()
+        sub = df_v[df_v['Tipo'] == tipo_filtro].copy()
         res = sub.groupby(['Nombre', 'Broker', 'Moneda']).agg({'Cant':'sum','Coste':'sum','Valor Mercado':'sum','P_Act':'first', 'Beneficio':'sum', 'Ult_Val':'first'}).reset_index()
         res['Rentabilidad %'] = (res['Beneficio'] / res['Coste'] * 100)
+
+        # EDITOR MANUAL PARA FONDOS (RESTAURADO)
+        if tipo_filtro == "Fondo":
+            with st.expander("✏️ Actualizar Precios de Fondos Manualmente"):
+                res_edit = res[['Nombre', 'P_Act']].copy()
+                edited_df = st.data_editor(res_edit, use_container_width=True, hide_index=True, key=f"edit_{tipo_filtro}")
+                if not edited_df['P_Act'].equals(res_edit['P_Act']):
+                    ahora = datetime.now().strftime("%d/%m/%Y %H:%M")
+                    for idx, row in edited_df.iterrows():
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'P_Act'] = row['P_Act']
+                        st.session_state.df_cartera.loc[st.session_state.df_cartera['Nombre'] == row['Nombre'], 'Ult_Val'] = ahora
+                    st.session_state.df_cartera.to_csv(ARCHIVO_CSV, index=False)
+                    st.rerun()
+
         res['Precio Actual'] = res.apply(lambda x: fmt_dual(x['P_Act'], x['Moneda'], rt, 4), axis=1)
         res['Beneficio (€/$)'] = res.apply(lambda x: fmt_dual(x['Beneficio'], x['Moneda'], rt), axis=1)
         res['Rentabilidad (%)'] = res['Rentabilidad %'].apply(lambda x: f"{x:.2f}%")
@@ -236,7 +256,7 @@ if check_password():
                 .format({"Coste":"{:.2f} €","Valor Mercado":"{:.2f} €", "Cant":"{:.4f}"}),
                 use_container_width=True, hide_index=True
             )
-        
+
         with st.expander(f"Ver desglose individual de {tit}"):
             for n in sub['Nombre'].unique():
                 det = sub[sub['Nombre'] == n].copy()
@@ -253,14 +273,14 @@ if check_password():
     mostrar_seccion("Fondos de Inversión", "Fondo", "📊")
     st.divider()
 
-    # --- 10. DIARIO DE OPERACIONES ---
+    # --- 10. DIARIO DE OPERACIONES MEJORADO ---
     st.subheader("📜 Diario de Operaciones")
     df_ops = pd.DataFrame(cargar_diario_operaciones()).sort_values(by='Fecha', ascending=False)
     with st.container(border=True):
         st.dataframe(df_ops.style.format({"Importe": "{:,.2f} €"}), use_container_width=True, hide_index=True)
     st.divider()
 
-    # --- 11. CAPITAL APORTADO (RESTAURADO) ---
+    # --- 11. CAPITAL APORTADO (RESTAURADO COMPLETO) ---
     st.subheader("👥 Capital Aportado")
     df_ap = st.session_state.df_aportaciones.copy()
     c_a, c_x = st.columns(2)
